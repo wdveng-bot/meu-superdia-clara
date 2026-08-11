@@ -62,30 +62,38 @@ await prepare(mobile);
 await mobile.screenshot({ path: path.join(outputDir, '01-cadastro-mobile.png'), fullPage: true });
 await registerFamily(mobile);
 await mobile.screenshot({ path: path.join(outputDir, '02-tarefas-mobile.png'), fullPage: true });
-await approveTasks(mobile, ['arrumar-cama', 'escovar-dentes']);
+await approveTasks(mobile, ['arrumar-cama', 'escovar-dentes', 'organizar-mochila']);
 await mobile.getByRole('button', { name: /^jogos$/i }).click();
 await mobile.screenshot({ path: path.join(outputDir, '03-jogos-mobile.png'), fullPage: true });
 await mobile.getByRole('button', { name: /jogar caça-estrelas/i }).click();
 await mobile.screenshot({ path: path.join(outputDir, '04-caca-estrelas-mobile.png'), fullPage: true });
 await mobile.getByRole('button', { name: /voltar aos jogos/i }).click();
+await mobile.getByRole('button', { name: /jogar memória dos animais/i }).click();
+await mobile.screenshot({ path: path.join(outputDir, '05-memoria-mobile.png'), fullPage: true });
+await mobile.getByRole('button', { name: /voltar aos jogos/i }).click();
+await mobile.getByRole('button', { name: /jogar laboratório de padrões/i }).click();
+await mobile.screenshot({ path: path.join(outputDir, '06-padroes-mobile.png'), fullPage: true });
+await mobile.getByRole('button', { name: /voltar aos jogos/i }).click();
 await mobile.getByRole('button', { name: /^recompensas$/i }).click();
-await mobile.screenshot({ path: path.join(outputDir, '05-recompensas-mobile.png'), fullPage: true });
+await mobile.screenshot({ path: path.join(outputDir, '07-recompensas-mobile.png'), fullPage: true });
 await enterParentMode(mobile);
-await mobile.screenshot({ path: path.join(outputDir, '06-painel-responsavel-mobile.png'), fullPage: true });
+await mobile.screenshot({ path: path.join(outputDir, '08-painel-responsavel-mobile.png'), fullPage: true });
 await mobile.getByRole('button', { name: /nova tarefa/i }).click();
-await mobile.screenshot({ path: path.join(outputDir, '07-nova-tarefa-mobile.png'), fullPage: true });
+await mobile.screenshot({ path: path.join(outputDir, '09-nova-tarefa-mobile.png'), fullPage: true });
 
 const tablet = await browser.newPage({ viewport: { width: 820, height: 1180 }, deviceScaleFactor: 1 });
 await prepare(tablet);
 await registerFamily(tablet);
-await approveTasks(tablet, ['arrumar-cama', 'escovar-dentes']);
+await approveTasks(tablet, ['arrumar-cama', 'escovar-dentes', 'organizar-mochila']);
 await tablet.getByRole('button', { name: /^jogos$/i }).click();
-await tablet.screenshot({ path: path.join(outputDir, '08-jogos-tablet.png'), fullPage: true });
+await tablet.screenshot({ path: path.join(outputDir, '10-jogos-tablet.png'), fullPage: true });
+await tablet.getByRole('button', { name: /jogar laboratório de padrões/i }).click();
+await tablet.screenshot({ path: path.join(outputDir, '11-padroes-tablet.png'), fullPage: true });
 
 await browser.close();
 
 if (errors.length) {
-  console.error(JSON.stringify({ screenshots: 8, errors }, null, 2));
+  console.error(JSON.stringify({ screenshots: 11, errors }, null, 2));
   process.exit(1);
 }
-console.log(JSON.stringify({ screenshots: 8, pageErrors: 0, outputDir }, null, 2));
+console.log(JSON.stringify({ screenshots: 11, pageErrors: 0, outputDir }, null, 2));

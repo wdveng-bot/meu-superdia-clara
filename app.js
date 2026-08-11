@@ -1,5 +1,47 @@
 const STORAGE_KEY = 'meu-superdia.v1';
 
+const STAR_LEVELS = [
+  {
+    seconds: 35,
+    sequence: ['⭐', '🌟', '⭐'],
+    board: ['🌙', '⭐', '☁️', '🌟', '🪐', '⭐', '✨', '☁️', '🌟', '💫', '⭐', '🌙'],
+  },
+  {
+    seconds: 30,
+    sequence: ['✨', '🌟', '💫', '✨'],
+    board: ['🌟', '✨', '🌙', '💫', '☁️', '✨', '⭐', '🌟', '🪐', '💫', '✨', '☁️'],
+  },
+  {
+    seconds: 25,
+    sequence: ['⭐', '✨', '🌟', '💫', '⭐'],
+    board: ['💫', '⭐', '🌟', '☁️', '✨', '🌙', '⭐', '🪐', '💫', '🌟', '✨', '⭐'],
+  },
+];
+
+const MEMORY_LEVELS = [
+  {
+    maxMoves: 10,
+    deck: ['🐶', '🐱', '🐼', '🦊', '🐱', '🦊', '🐶', '🐼'],
+  },
+  {
+    maxMoves: 18,
+    deck: ['🐶', '🐱', '🐰', '🐼', '🦊', '🐸', '🐱', '🐸', '🐶', '🦊', '🐼', '🐰'],
+  },
+  {
+    maxMoves: 26,
+    deck: ['🦁', '🐯', '🐵', '🐨', '🐙', '🦋', '🐝', '🐵', '🦄', '🦁', '🐝', '🐙', '🐨', '🦄', '🐯', '🦋'],
+  },
+];
+
+const PATTERN_CHALLENGES = [
+  { sequence: ['🐶', '🐱', '🐶', '🐱'], options: ['🐶', '🐱', '🦊'], answer: '🐶', clue: 'Dois bichos se alternam.' },
+  { sequence: ['🍓', '🍓', '🍌', '🍓', '🍓', '🍌'], options: ['🍌', '🍓', '🍎'], answer: '🍓', clue: 'O grupo tem três frutas.' },
+  { sequence: ['⭐', '🌙', '☁️', '⭐', '🌙', '☁️'], options: ['☁️', '⭐', '🌙'], answer: '⭐', clue: 'O grupo tem três símbolos.' },
+  { sequence: ['2', '4', '6'], options: ['7', '8', '10'], answer: '8', clue: 'Some dois a cada número.' },
+  { sequence: ['▲', '▲▲', '▲▲▲'], options: ['▲▲', '▲▲▲▲', '▲▲▲▲▲'], answer: '▲▲▲▲', clue: 'Acrescente um triângulo.' },
+  { sequence: ['2', '5', '8', '11'], options: ['12', '13', '14'], answer: '14', clue: 'Some três a cada número.' },
+];
+
 const starterState = {
   version: 3,
   profileComplete: false,
@@ -7,7 +49,7 @@ const starterState = {
   parentPin: '',
   points: 0,
   gamePasses: 0,
-  gameStats: { starGames: 0, memoryGames: 0 },
+  gameStats: { starGames: 0, memoryGames: 0, patternGames: 0 },
   tasks: [
     { id: 'arrumar-cama', title: 'Arrumar a cama', icon: '🛏️', category: 'Meu quarto', points: 10, status: 'open' },
     { id: 'escovar-dentes', title: 'Escovar os dentes', icon: '🪥', category: 'Cuidar de mim', points: 10, status: 'open' },
@@ -33,6 +75,36 @@ let parentTab = 'approvals';
 let modal = null;
 let activeGame = null;
 let gameCelebration = null;
+let gameTimer = null;
+let gameRunCounter = 0;
+
+function stopGameTimer() {
+  if (!gameTimer) return;
+  window.clearInterval(gameTimer);
+  gameTimer = null;
+}
+
+function markStarTimedOut() {
+  if (activeGame?.id !== 'stars') return;
+  activeGame.timeLeft = 0;
+  activeGame.timedOut = true;
+  stopGameTimer();
+}
+
+function startStarTimer() {
+  stopGameTimer();
+  gameTimer = window.setInterval(() => {
+    if (activeGame?.id !== 'stars') {
+      stopGameTimer();
+      return;
+    }
+    activeGame.timeLeft = Math.max(0, activeGame.timeLeft - 1);
+    if (activeGame.timeLeft === 0) {
+      markStarTimedOut();
+    }
+    render();
+  }, 1000);
+}
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -42,7 +114,15 @@ function loadState() {
   try {
     const stored = JSON.parse(localStorage.getItem(STORAGE_KEY));
     if (!stored) return clone(starterState);
-    if (stored.version === starterState.version) return stored;
+    if (stored.version === starterState.version) {
+      const gameStats = { ...(stored.gameStats || {}) };
+      for (const [key, defaultValue] of Object.entries(starterState.gameStats)) {
+        if (!Number.isFinite(gameStats[key])) gameStats[key] = defaultValue;
+      }
+      const normalized = { ...stored, gameStats };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+      return normalized;
+    }
     if (stored.version === 2) {
       return {
         ...stored,
@@ -360,6 +440,7 @@ function renderRewardCard(reward) {
 function renderGames() {
   if (activeGame?.id === 'stars') return renderStarGame();
   if (activeGame?.id === 'memory') return renderMemoryGame();
+  if (activeGame?.id === 'patterns') return renderPatternGame();
   const canPlay = state.gamePasses > 0;
   return `
     <section aria-labelledby="games-title">
@@ -375,55 +456,163 @@ function renderGames() {
       <div class="game-grid">
         <article class="game-card stars">
           <div class="game-art" aria-hidden="true">⭐</div>
-          <p class="eyebrow">Atenção</p>
+          <p class="eyebrow">Atenção e velocidade</p>
           <h3>Caça-estrelas</h3>
-          <p>Encontre cinco estrelas escondidas no céu.</p>
+          <p>Complete três sequências antes do tempo acabar.</p>
           <button class="game-button" data-action="start-game" data-id="stars" aria-label="Jogar Caça-estrelas" ${canPlay ? '' : 'disabled'}>${canPlay ? 'Jogar Caça-estrelas' : 'Faça uma tarefa para liberar'}</button>
         </article>
         <article class="game-card memory">
           <div class="game-art" aria-hidden="true">🐼</div>
-          <p class="eyebrow">Memória</p>
+          <p class="eyebrow">Memória e estratégia</p>
           <h3>Memória dos animais</h3>
-          <p>Encontre os quatro pares de bichinhos.</p>
+          <p>Avance por três fases com 4, 6 e 8 pares.</p>
           <button class="game-button" data-action="start-game" data-id="memory" aria-label="Jogar Memória dos animais" ${canPlay ? '' : 'disabled'}>${canPlay ? 'Jogar Memória dos animais' : 'Faça uma tarefa para liberar'}</button>
+        </article>
+        <article class="game-card patterns">
+          <div class="game-art" aria-hidden="true">🧩</div>
+          <p class="eyebrow">Lógica e descoberta</p>
+          <h3>Laboratório de padrões</h3>
+          <p>Descubra o próximo item em seis desafios progressivos.</p>
+          <button class="game-button" data-action="start-game" data-id="patterns" aria-label="Jogar Laboratório de padrões" ${canPlay ? '' : 'disabled'}>${canPlay ? 'Jogar Laboratório de padrões' : 'Faça uma tarefa para liberar'}</button>
         </article>
       </div>
     </section>`;
 }
 
 function renderStarGame() {
-  const sky = ['☁️', '⭐', '🌙', '☁️', '⭐', '☁️', '⭐', '🪐', '☁️', '⭐', '☁️', '⭐'];
+  const level = STAR_LEVELS[activeGame.level];
+  if (activeGame.timedOut) {
+    return `
+      <section class="game-stage game-timeout" aria-labelledby="star-timeout-title">
+        <button class="ghost-button" data-action="leave-game">← Voltar aos jogos</button>
+        <div class="challenge-result">
+          <span class="result-icon" aria-hidden="true">⏳</span>
+          <p class="eyebrow">Fase ${activeGame.level + 1} de ${STAR_LEVELS.length}</p>
+          <h2 id="star-timeout-title">Tempo esgotado</h2>
+          <p>Você mantém esta partida. Respire, memorize a sequência e tente a fase novamente.</p>
+          <p>🎟️ Passes restantes: <strong data-testid="game-passes">${state.gamePasses}</strong></p>
+          <button class="primary-button" data-action="retry-star-phase">Tentar a fase de novo</button>
+        </div>
+      </section>`;
+  }
+  const expected = level.sequence[activeGame.sequenceIndex];
   return `
     <section class="game-stage" aria-labelledby="star-game-title">
       <button class="ghost-button" data-action="leave-game">← Voltar aos jogos</button>
       <div class="game-stage-head">
-        <div><p class="eyebrow">Partida liberada</p><h2 id="star-game-title">Caça-estrelas</h2><p class="muted">Toque nas cinco estrelas.</p></div>
-        <div class="game-stage-stats"><span>🎟️ <strong data-testid="game-passes">${state.gamePasses}</strong></span><strong class="game-score" data-testid="star-score">${activeGame.found}/5</strong></div>
+        <div>
+          <p class="eyebrow">Fase ${activeGame.level + 1} de ${STAR_LEVELS.length}</p>
+          <h2 id="star-game-title">Caça-estrelas</h2>
+          <p class="muted">Toque nos símbolos na ordem indicada. Um erro tira 3 segundos.</p>
+        </div>
+        <div class="game-stage-stats">
+          <span>🎟️ <strong data-testid="game-passes">${state.gamePasses}</strong></span>
+          <strong class="game-score"><span data-testid="star-time">${activeGame.timeLeft}</span>s</strong>
+          <span class="small">Erros: <strong data-testid="star-mistakes">${activeGame.mistakes}</strong></span>
+        </div>
+      </div>
+      <div class="sequence-panel" aria-label="Sequência alvo">
+        <span class="eyebrow">Sequência alvo</span>
+        <div class="target-sequence">${level.sequence.map((symbol, index) => `<span class="target-symbol ${index < activeGame.sequenceIndex ? 'done' : index === activeGame.sequenceIndex ? 'current' : ''}">${symbol}</span>`).join('<span aria-hidden="true">→</span>')}</div>
+        <p class="muted small">Agora encontre: <strong data-testid="star-target">${expected}</strong></p>
       </div>
       <div class="star-sky" aria-label="Céu do jogo">
-        ${sky.map((item, index) => item === '⭐'
-          ? `<button class="sky-item star" data-action="find-star" data-id="${index}" aria-label="Estrela">⭐</button>`
-          : `<span class="sky-item" aria-hidden="true">${item}</span>`).join('')}
+        ${level.board.map((item, index) => {
+          const used = activeGame.usedIds.includes(index);
+          return `<button class="sky-item ${used ? 'solved' : ''}" data-action="find-star" data-id="${index}" data-symbol="${item}" aria-label="Escolher ${item}" ${used ? 'disabled' : ''}>${used ? '✓' : item}</button>`;
+        }).join('')}
       </div>
     </section>`;
 }
 
 function renderMemoryGame() {
+  const level = MEMORY_LEVELS[activeGame.level];
+  if (activeGame.outOfMoves) {
+    return `
+      <section class="game-stage" aria-labelledby="memory-limit-title">
+        <button class="ghost-button" data-action="leave-game">← Voltar aos jogos</button>
+        <div class="challenge-result">
+          <span class="result-icon" aria-hidden="true">🧠</span>
+          <p class="eyebrow">Fase ${activeGame.level + 1} de ${MEMORY_LEVELS.length}</p>
+          <h2 id="memory-limit-title">Limite de jogadas</h2>
+          <p>Você mantém esta partida. Observe as cartas outra vez e tente com uma estratégia nova.</p>
+          <p>🎟️ Passes restantes: <strong data-testid="game-passes">${state.gamePasses}</strong></p>
+          <button class="primary-button" data-action="retry-memory-level">Tentar a fase novamente</button>
+        </div>
+      </section>`;
+  }
   const matchedPairs = activeGame.matched.length / 2;
+  const pairCount = level.deck.length / 2;
   return `
     <section class="game-stage" aria-labelledby="memory-game-title">
       <button class="ghost-button" data-action="leave-game">← Voltar aos jogos</button>
       <div class="game-stage-head">
-        <div><p class="eyebrow">Partida liberada</p><h2 id="memory-game-title">Memória dos animais</h2><p class="muted">Vire duas cartas e encontre os pares.</p></div>
-        <div class="game-stage-stats"><span>🎟️ <strong data-testid="game-passes">${state.gamePasses}</strong></span><strong class="game-score">${matchedPairs}/4</strong></div>
+        <div>
+          <p class="eyebrow">Fase ${activeGame.level + 1} de ${MEMORY_LEVELS.length}</p>
+          <h2 id="memory-game-title">Memória dos animais</h2>
+          <p class="muted">${activeGame.preview ? 'Memorize as posições antes de esconder as cartas.' : 'Encontre os pares antes de atingir o limite de jogadas.'}</p>
+        </div>
+        <div class="game-stage-stats">
+          <span>🎟️ <strong data-testid="game-passes">${state.gamePasses}</strong></span>
+          <strong class="game-score">${matchedPairs}/${pairCount}</strong>
+          <span class="small">Jogadas: <strong data-testid="memory-moves">${activeGame.moves}/${level.maxMoves}</strong></span>
+        </div>
       </div>
-      <div class="memory-board" aria-label="Cartas do jogo da memória">
-        ${activeGame.deck.map((animal, index) => {
+      ${activeGame.preview ? '<button class="primary-button memory-ready" data-action="start-memory-level">Esconder cartas e começar</button>' : ''}
+      <div class="memory-board" style="--memory-columns:${level.deck.length > 12 ? 4 : level.deck.length > 8 ? 4 : 4}" aria-label="Cartas do jogo da memória">
+        ${level.deck.map((animal, index) => {
           const isOpen = activeGame.open.includes(index);
           const isMatched = activeGame.matched.includes(index);
-          const visible = isOpen || isMatched;
-          return `<button class="memory-card ${visible ? 'open' : ''} ${isMatched ? 'matched' : ''}" data-action="flip-memory" data-id="${index}" data-testid="memory-card-${index}" aria-label="${visible ? `Carta ${animal}` : `Carta fechada ${index + 1}`}" ${isMatched ? 'disabled' : ''}>${visible ? animal : '★'}</button>`;
+          const visible = activeGame.preview || isOpen || isMatched;
+          return `<button class="memory-card ${visible ? 'open' : ''} ${isMatched ? 'matched' : ''}" data-action="flip-memory" data-id="${index}" data-testid="memory-card-${index}" aria-label="${visible ? `Carta ${animal}` : `Carta fechada ${index + 1}`}" ${activeGame.preview || isMatched ? 'disabled' : ''}>${visible ? animal : '★'}</button>`;
         }).join('')}
+      </div>
+    </section>`;
+}
+
+function renderPatternGame() {
+  if (activeGame.lives <= 0) {
+    return `
+      <section class="game-stage pattern-stage" aria-labelledby="pattern-paused-title">
+        <button class="ghost-button" data-action="leave-game">← Voltar aos jogos</button>
+        <div class="challenge-result">
+          <span class="result-icon" aria-hidden="true">🧩</span>
+          <p class="eyebrow">Boa tentativa</p>
+          <h2 id="pattern-paused-title">Desafio pausado</h2>
+          <p>Você mantém esta partida. Recomece com três vidas e use as dicas que descobriu.</p>
+          <p>🎟️ Passes restantes: <strong data-testid="game-passes">${state.gamePasses}</strong></p>
+          <button class="primary-button" data-action="retry-pattern-game">Recomeçar laboratório</button>
+        </div>
+      </section>`;
+  }
+  const challenge = PATTERN_CHALLENGES[activeGame.round];
+  return `
+    <section class="game-stage pattern-stage" aria-labelledby="pattern-game-title">
+      <button class="ghost-button" data-action="leave-game">← Voltar aos jogos</button>
+      <div class="game-stage-head">
+        <div>
+          <p class="eyebrow">Desafio ${activeGame.round + 1} de ${PATTERN_CHALLENGES.length}</p>
+          <h2 id="pattern-game-title">Laboratório de padrões</h2>
+          <p class="muted">Descubra o que vem depois. Uma resposta errada tira uma vida.</p>
+        </div>
+        <div class="game-stage-stats">
+          <span>🎟️ <strong data-testid="game-passes">${state.gamePasses}</strong></span>
+          <strong class="game-score" aria-label="${activeGame.lives} vidas">❤️ <span data-testid="pattern-lives">${activeGame.lives}</span></strong>
+          <span class="small">Acertos: <strong>${activeGame.correct}</strong></span>
+        </div>
+      </div>
+      <div class="pattern-puzzle">
+        <p class="eyebrow">Qual é o próximo?</p>
+        <div class="pattern-sequence" aria-label="Sequência do desafio">
+          ${challenge.sequence.map((item) => `<span>${esc(item)}</span>`).join('<span class="pattern-arrow" aria-hidden="true">›</span>')}
+          <span class="pattern-arrow" aria-hidden="true">›</span><strong class="pattern-blank">?</strong>
+        </div>
+        <div class="pattern-options" aria-label="Alternativas">
+          ${challenge.options.map((option, index) => {
+            const wasWrong = activeGame.wrongOptions.includes(index);
+            return `<button class="${wasWrong ? 'wrong' : ''}" data-action="answer-pattern" data-id="${index}" aria-label="Escolher ${esc(option)}" ${wasWrong ? 'disabled' : ''}>${esc(option)}</button>`;
+          }).join('')}
+        </div>
       </div>
     </section>`;
 }
@@ -648,12 +837,15 @@ app.addEventListener('click', (event) => {
     requestAnimationFrame(() => document.querySelector('#parent-pin')?.focus());
   }
   if (action === 'switch-profile') {
+    stopGameTimer();
+    activeGame = null;
     currentView = 'chooser';
     modal = null;
     document.querySelector('.modal-backdrop')?.remove();
     render();
   }
   if (action === 'child-tab') {
+    stopGameTimer();
     childTab = tab;
     activeGame = null;
     render();
@@ -684,42 +876,130 @@ app.addEventListener('click', (event) => {
     showToast(`${task.points} pontos e 1 passe de jogo liberados.`);
   }
   if (action === 'start-game') {
-    if (state.gamePasses < 1 || !['stars', 'memory'].includes(id)) return;
+    if (state.gamePasses < 1 || !['stars', 'memory', 'patterns'].includes(id)) return;
+    stopGameTimer();
     state.gamePasses -= 1;
     gameCelebration = null;
+    const runId = ++gameRunCounter;
     if (id === 'stars') {
       state.gameStats.starGames += 1;
-      activeGame = { id: 'stars', found: 0, foundIds: [] };
-    } else {
+      activeGame = {
+        id: 'stars',
+        level: 0,
+        sequenceIndex: 0,
+        mistakes: 0,
+        timeLeft: STAR_LEVELS[0].seconds,
+        usedIds: [],
+        runId,
+      };
+    } else if (id === 'memory') {
       state.gameStats.memoryGames += 1;
       activeGame = {
         id: 'memory',
-        deck: ['🐶', '🐱', '🐼', '🦊', '🐱', '🦊', '🐶', '🐼'],
+        level: 0,
+        preview: true,
+        moves: 0,
+        totalMoves: 0,
         open: [],
         matched: [],
+        runId,
+      };
+    } else {
+      state.gameStats.patternGames = (state.gameStats.patternGames || 0) + 1;
+      activeGame = {
+        id: 'patterns',
+        round: 0,
+        lives: 3,
+        correct: 0,
+        wrongOptions: [],
+        runId,
       };
     }
-    const gameName = id === 'stars' ? 'Caça-estrelas' : 'Memória dos animais';
-    addHistory(`${state.child.name} usou 1 passe para jogar ${gameName}.`);
+    const gameNames = {
+      stars: 'Caça-estrelas',
+      memory: 'Memória dos animais',
+      patterns: 'Laboratório de padrões',
+    };
+    addHistory(`${state.child.name} usou 1 passe para jogar ${gameNames[id]}.`);
     saveState();
     render();
+    if (id === 'stars') startStarTimer();
+  }
+  if (action === 'retry-star-phase') {
+    if (activeGame?.id !== 'stars' || !activeGame.timedOut) return;
+    activeGame.sequenceIndex = 0;
+    activeGame.usedIds = [];
+    activeGame.mistakes = 0;
+    activeGame.timeLeft = STAR_LEVELS[activeGame.level].seconds;
+    activeGame.timedOut = false;
+    render();
+    startStarTimer();
   }
   if (action === 'find-star') {
-    if (activeGame?.id !== 'stars' || activeGame.foundIds.includes(id)) return;
-    activeGame.foundIds.push(id);
-    activeGame.found += 1;
-    if (activeGame.found === 5) {
+    if (activeGame?.id !== 'stars') return;
+    if (activeGame.timedOut || activeGame.timeLeft <= 0) {
+      markStarTimedOut();
+      render();
+      return;
+    }
+    const level = STAR_LEVELS[activeGame.level];
+    const selectedIndex = Number(id);
+    if (!Number.isInteger(selectedIndex) || activeGame.usedIds.includes(selectedIndex)) return;
+    const chosen = level.board[selectedIndex];
+    const expected = level.sequence[activeGame.sequenceIndex];
+    if (chosen !== expected) {
+      activeGame.mistakes += 1;
+      activeGame.timeLeft = Math.max(0, activeGame.timeLeft - 3);
+      if (activeGame.timeLeft === 0) {
+        markStarTimedOut();
+        render();
+        showToast('O tempo acabou. Tente a fase de novo.');
+        return;
+      }
+      render();
+      showToast('Ops! Essa não era a próxima. Menos 3 segundos.');
+      return;
+    }
+    activeGame.usedIds.push(selectedIndex);
+    activeGame.sequenceIndex += 1;
+    if (activeGame.sequenceIndex === level.sequence.length && activeGame.level === STAR_LEVELS.length - 1) {
+      stopGameTimer();
       activeGame = null;
-      gameCelebration = 'Você encontrou as cinco estrelas.';
+      gameCelebration = 'Você completou as três fases na ordem certa.';
       render();
       confetti();
-      showToast('Você encontrou todas as estrelas!');
+      showToast('Missão espacial completa!');
+      return;
+    }
+    if (activeGame.sequenceIndex === level.sequence.length && activeGame.level < STAR_LEVELS.length - 1) {
+      activeGame.level += 1;
+      activeGame.sequenceIndex = 0;
+      activeGame.usedIds = [];
+      activeGame.timeLeft = STAR_LEVELS[activeGame.level].seconds;
+      render();
+      showToast(`Fase ${activeGame.level + 1} liberada!`);
       return;
     }
     render();
   }
+  if (action === 'retry-memory-level') {
+    if (activeGame?.id !== 'memory' || !activeGame.outOfMoves) return;
+    activeGame.preview = true;
+    activeGame.moves = 0;
+    activeGame.open = [];
+    activeGame.matched = [];
+    activeGame.outOfMoves = false;
+    activeGame.runId = ++gameRunCounter;
+    render();
+  }
+  if (action === 'start-memory-level') {
+    if (activeGame?.id !== 'memory' || !activeGame.preview) return;
+    activeGame.preview = false;
+    render();
+  }
   if (action === 'flip-memory') {
-    if (activeGame?.id !== 'memory' || activeGame.open.length >= 2) return;
+    if (activeGame?.id !== 'memory' || activeGame.preview || activeGame.open.length >= 2) return;
+    const level = MEMORY_LEVELS[activeGame.level];
     const cardIndex = Number(id);
     if (!Number.isInteger(cardIndex) || activeGame.open.includes(cardIndex) || activeGame.matched.includes(cardIndex)) return;
     activeGame.open.push(cardIndex);
@@ -727,29 +1007,97 @@ app.addEventListener('click', (event) => {
       render();
       return;
     }
+    activeGame.moves += 1;
+    activeGame.totalMoves += 1;
     const [first, second] = activeGame.open;
-    if (activeGame.deck[first] === activeGame.deck[second]) {
+    if (level.deck[first] === level.deck[second]) {
       activeGame.matched.push(first, second);
       activeGame.open = [];
-      if (activeGame.matched.length === activeGame.deck.length) {
+      if (activeGame.matched.length === level.deck.length && activeGame.level === MEMORY_LEVELS.length - 1) {
         activeGame = null;
-        gameCelebration = 'Você encontrou todos os pares de animais.';
+        gameCelebration = 'Você encontrou 18 pares em três fases cada vez mais difíceis.';
         render();
         confetti();
-        showToast('Você encontrou todos os pares!');
+        showToast('Desafio de memória completo!');
+        return;
+      }
+      if (activeGame.matched.length === level.deck.length && activeGame.level < MEMORY_LEVELS.length - 1) {
+        activeGame.level += 1;
+        activeGame.preview = true;
+        activeGame.moves = 0;
+        activeGame.open = [];
+        activeGame.matched = [];
+        activeGame.runId = ++gameRunCounter;
+        render();
+        showToast(`Fase ${activeGame.level + 1}: agora são ${MEMORY_LEVELS[activeGame.level].deck.length / 2} pares!`);
+        return;
+      }
+      if (activeGame.moves >= level.maxMoves) {
+        activeGame.outOfMoves = true;
+        render();
         return;
       }
       render();
       return;
     }
+    if (activeGame.moves >= level.maxMoves) {
+      activeGame.open = [];
+      activeGame.outOfMoves = true;
+      render();
+      return;
+    }
     render();
+    const pendingRunId = activeGame.runId;
+    const pendingLevel = activeGame.level;
+    const pendingCards = activeGame.open.join(',');
     window.setTimeout(() => {
-      if (activeGame?.id !== 'memory') return;
+      if (
+        activeGame?.id !== 'memory'
+        || activeGame.runId !== pendingRunId
+        || activeGame.level !== pendingLevel
+        || activeGame.open.join(',') !== pendingCards
+      ) return;
       activeGame.open = [];
       render();
     }, 700);
   }
+  if (action === 'retry-pattern-game') {
+    if (activeGame?.id !== 'patterns' || activeGame.lives > 0) return;
+    activeGame.round = 0;
+    activeGame.lives = 3;
+    activeGame.correct = 0;
+    activeGame.wrongOptions = [];
+    render();
+  }
+  if (action === 'answer-pattern') {
+    if (activeGame?.id !== 'patterns') return;
+    const challenge = PATTERN_CHALLENGES[activeGame.round];
+    const optionIndex = Number(id);
+    if (!Number.isInteger(optionIndex) || activeGame.wrongOptions.includes(optionIndex)) return;
+    const answer = challenge.options[optionIndex];
+    if (answer !== challenge.answer) {
+      activeGame.lives -= 1;
+      activeGame.wrongOptions.push(optionIndex);
+      render();
+      showToast(`Ainda não. Dica: ${challenge.clue}`);
+      return;
+    }
+    activeGame.correct += 1;
+    activeGame.round += 1;
+    activeGame.wrongOptions = [];
+    if (activeGame.round === PATTERN_CHALLENGES.length) {
+      activeGame = null;
+      gameCelebration = 'Você descobriu os seis padrões do laboratório.';
+      render();
+      confetti();
+      showToast('Laboratório completo!');
+      return;
+    }
+    render();
+    showToast('Resposta certa! Próximo desafio.');
+  }
   if (action === 'leave-game') {
+    stopGameTimer();
     activeGame = null;
     render();
   }

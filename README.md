@@ -42,7 +42,11 @@ Depois desse primeiro carregamento, o aplicativo abre e funciona sem internet. O
 - Modo responsável protegido pelo PIN definido no cadastro.
 - Aprovação de tarefas antes da liberação dos pontos e do passe de jogo.
 - Um passe acumulável por tarefa aprovada e consumo de um passe por partida.
-- Caça-estrelas e Memória dos animais, ambos disponíveis offline.
+- Três jogos disponíveis offline e com dificuldade progressiva:
+  - Caça-estrelas com três fases, sequência, cronômetro e penalidade por erro;
+  - Memória dos animais com 4, 6 e 8 pares e limite de jogadas;
+  - Laboratório de padrões com seis desafios de lógica e três vidas.
+- Fases podem ser repetidas sem gastar outro passe quando o tempo, as jogadas ou as vidas acabam.
 - Jogos não geram pontos e não reduzem o saldo de recompensas.
 - Barras de progresso mostram quanto falta para cada recompensa.
 - Aprovação de recompensas antes do desconto dos pontos.
@@ -81,13 +85,16 @@ Cobertura automatizada atual:
 2. migração sem perda do cadastro e dos pontos existentes;
 3. tarefa solicitada pela criança e aprovada pelo responsável;
 4. liberação, acúmulo e consumo dos passes de jogo;
-5. conclusão do Caça-estrelas;
-6. início e conclusão da Memória dos animais;
-7. nova tarefa criada pelo responsável e exibida para a criança;
-8. acúmulo de pontos e progresso até a recompensa;
-9. recompensa solicitada, aprovada e debitada;
-10. abertura e execução de jogo offline;
-11. manifest relativo e navegação básica acessível.
+5. três fases do Caça-estrelas, contagem regressiva, sequência e penalidade;
+6. repetição do Caça-estrelas quando o tempo termina;
+7. três fases da Memória com 4, 6 e 8 pares e limite de jogadas;
+8. repetição da Memória ao atingir o limite;
+9. seis desafios, vidas, dicas e recomeço do Laboratório de padrões;
+10. nova tarefa criada pelo responsável e exibida para a criança;
+11. acúmulo de pontos e progresso até a recompensa;
+12. recompensa solicitada, aprovada e debitada;
+13. abertura e execução dos três jogos offline;
+14. manifest relativo e navegação básica acessível.
 
 ## Limites desta versão
 

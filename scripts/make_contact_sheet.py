@@ -8,10 +8,13 @@ files = [
     source / "02-tarefas-mobile.png",
     source / "03-jogos-mobile.png",
     source / "04-caca-estrelas-mobile.png",
-    source / "05-recompensas-mobile.png",
-    source / "06-painel-responsavel-mobile.png",
-    source / "07-nova-tarefa-mobile.png",
-    source / "08-jogos-tablet.png",
+    source / "05-memoria-mobile.png",
+    source / "06-padroes-mobile.png",
+    source / "07-recompensas-mobile.png",
+    source / "08-painel-responsavel-mobile.png",
+    source / "09-nova-tarefa-mobile.png",
+    source / "10-jogos-tablet.png",
+    source / "11-padroes-tablet.png",
 ]
 thumbs = []
 for file in files:

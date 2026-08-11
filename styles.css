@@ -369,6 +369,7 @@ button:disabled { opacity: .58; cursor: not-allowed; box-shadow: none; }
   box-shadow: 5px 6px 0 var(--ink);
 }
 .game-card.memory { background: var(--coral-soft); }
+.game-card.patterns { background: #eee9ff; }
 .game-card .game-art { position: absolute; top: 14px; right: 18px; font-size: 3rem; transform: rotate(8deg); }
 .game-card h3 { max-width: 70%; font-family: var(--font-display); font-size: 1.5rem; }
 .game-card p:not(.eyebrow) { max-width: 75%; color: var(--muted); }
@@ -386,6 +387,28 @@ button:disabled { opacity: .58; cursor: not-allowed; box-shadow: none; }
 .game-stage-head { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin: 24px 0 16px; }
 .game-stage-stats { display: grid; justify-items: end; gap: 5px; }
 .game-score { font-family: var(--font-display); font-size: 2rem; }
+.sequence-panel {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 15px 17px;
+  border: 2px solid #8ca9bd;
+  border-radius: var(--radius-md);
+  background: #f4fbff;
+}
+.target-sequence { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.target-symbol {
+  display: grid;
+  width: 45px;
+  height: 45px;
+  place-items: center;
+  border: 2px solid transparent;
+  border-radius: 14px;
+  background: white;
+  font-size: 1.45rem;
+}
+.target-symbol.current { border-color: var(--ink); background: var(--sun-soft); box-shadow: 2px 3px 0 var(--ink); }
+.target-symbol.done { color: #356d5a; background: #dff3ea; opacity: .76; }
 .star-sky {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -396,9 +419,20 @@ button:disabled { opacity: .58; cursor: not-allowed; box-shadow: none; }
   background: #d9effb;
   box-shadow: 6px 7px 0 var(--ink);
 }
-.sky-item { display: grid; min-height: 78px; place-items: center; border: 0; border-radius: 20px; background: rgb(255 255 255 / 48%); font-size: 2.4rem; }
-.sky-item.star { background: var(--sun-soft); cursor: pointer; transition: transform .15s ease; }
-.sky-item.star:hover { transform: scale(1.06) rotate(4deg); }
+.sky-item {
+  display: grid;
+  min-height: 78px;
+  place-items: center;
+  border: 2px solid transparent;
+  border-radius: 20px;
+  background: rgb(255 255 255 / 58%);
+  font-size: 2.25rem;
+  cursor: pointer;
+  transition: transform .15s ease, border-color .15s ease;
+}
+.sky-item:hover { transform: scale(1.04); border-color: #7294aa; }
+.sky-item.solved { color: #2e6955; background: #dff3ea; opacity: .84; }
+.memory-ready { width: 100%; margin-bottom: 14px; }
 .memory-board { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
 .memory-card {
   min-height: 88px;
@@ -412,6 +446,58 @@ button:disabled { opacity: .58; cursor: not-allowed; box-shadow: none; }
 }
 .memory-card.open { background: var(--sun-soft); transform: translate(2px, 2px); box-shadow: 1px 2px 0 var(--ink); }
 .memory-card.matched { border-color: #75b49f; background: #dff3ea; opacity: 1; }
+.challenge-result {
+  display: grid;
+  justify-items: center;
+  max-width: 620px;
+  margin: 30px auto 0;
+  padding: 34px 24px;
+  border: 2px solid var(--ink);
+  border-radius: var(--radius-lg);
+  background: var(--sun-soft);
+  box-shadow: 6px 7px 0 var(--ink);
+  text-align: center;
+}
+.challenge-result .result-icon { margin-bottom: 8px; font-size: 3.3rem; }
+.challenge-result p { max-width: 46ch; }
+.pattern-puzzle {
+  display: grid;
+  gap: 22px;
+  padding: 22px;
+  border: 2px solid var(--ink);
+  border-radius: var(--radius-lg);
+  background: #eee9ff;
+  box-shadow: 6px 7px 0 var(--ink);
+}
+.pattern-sequence { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; }
+.pattern-sequence > span:not(.pattern-arrow), .pattern-blank {
+  display: grid;
+  min-width: 54px;
+  min-height: 54px;
+  padding: 7px;
+  place-items: center;
+  border: 2px solid #8e82bb;
+  border-radius: 16px;
+  background: white;
+  font-size: 1.55rem;
+}
+.pattern-arrow { color: #756c94; font-size: 1.6rem; font-weight: 900; }
+.pattern-blank { border-style: dashed; color: #6a538d; background: #faf8ff; }
+.pattern-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.pattern-options button {
+  min-height: 72px;
+  padding: 8px;
+  border: 2px solid var(--ink);
+  border-radius: 18px;
+  color: var(--ink);
+  background: white;
+  box-shadow: 3px 4px 0 var(--ink);
+  font-size: 1.5rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+.pattern-options button:hover { transform: translateY(-2px); }
+.pattern-options button.wrong { color: #8b2f1f; background: var(--coral-soft); box-shadow: none; }
 
 .bottom-nav {
   position: fixed;
@@ -526,6 +612,10 @@ button:disabled { opacity: .58; cursor: not-allowed; box-shadow: none; }
   .modal { border-radius: var(--radius-lg); }
 }
 
+@media (min-width: 980px) {
+  .game-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
 @media (max-width: 520px) {
   .points-strip { grid-template-columns: auto 1fr; }
   .points-goal { grid-column: 1 / -1; max-width: none; text-align: left; }
@@ -540,8 +630,17 @@ button:disabled { opacity: .58; cursor: not-allowed; box-shadow: none; }
   .topbar .brand-mark span:last-child { display: none; }
   .ghost-button { padding: 0 12px; font-size: .78rem; }
   .nav-button { font-size: .74rem; }
-  .memory-board { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .memory-card { min-height: 72px; }
+  .game-stage-head { align-items: start; }
+  .game-stage-head > div:first-child { max-width: 67%; }
+  .game-stage-stats { flex: 0 0 auto; }
+  .memory-board { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; }
+  .memory-card { min-height: 66px; border-radius: 15px; font-size: 1.65rem; }
+  .pattern-puzzle { padding: 16px 12px; }
+  .pattern-sequence { gap: 5px; }
+  .pattern-sequence > span:not(.pattern-arrow), .pattern-blank { min-width: 43px; min-height: 48px; font-size: 1.25rem; }
+  .pattern-arrow { font-size: 1rem; }
+  .pattern-options { gap: 8px; }
+  .pattern-options button { min-height: 64px; font-size: 1.2rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {
