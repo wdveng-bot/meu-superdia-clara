@@ -6,10 +6,12 @@ source = root / "screenshots"
 files = [
     source / "01-cadastro-mobile.png",
     source / "02-tarefas-mobile.png",
-    source / "03-recompensas-mobile.png",
-    source / "04-painel-responsavel-mobile.png",
-    source / "05-nova-tarefa-mobile.png",
-    source / "06-tarefas-desktop.png",
+    source / "03-jogos-mobile.png",
+    source / "04-caca-estrelas-mobile.png",
+    source / "05-recompensas-mobile.png",
+    source / "06-painel-responsavel-mobile.png",
+    source / "07-nova-tarefa-mobile.png",
+    source / "08-jogos-tablet.png",
 ]
 thumbs = []
 for file in files:
@@ -17,7 +19,7 @@ for file in files:
     image.thumbnail((360, 700), Image.Resampling.LANCZOS)
     thumbs.append((file.name, image.copy()))
 
-columns = 3
+columns = 4
 cell_w, cell_h = 390, 760
 rows = (len(thumbs) + columns - 1) // columns
 sheet = Image.new("RGB", (columns * cell_w, rows * cell_h), "#e9eee9")

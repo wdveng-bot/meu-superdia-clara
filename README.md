@@ -1,6 +1,6 @@
 # Meu Superdia
 
-Aplicativo mobile/PWA de tarefas e recompensas para crianças de 5 a 10 anos.
+Aplicativo mobile/PWA de tarefas, jogos e recompensas para crianças de 5 a 10 anos.
 
 ## Acesso online
 
@@ -15,7 +15,7 @@ No primeiro acesso, o responsável configura:
 - avatar;
 - PIN do responsável.
 
-O cadastro, os pontos, as tarefas e as recompensas permanecem salvos no mesmo tablet.
+O cadastro, os pontos, os passes de jogo, as tarefas e as recompensas permanecem salvos no mesmo tablet.
 
 ## Instalar no tablet e usar offline
 
@@ -38,9 +38,13 @@ Depois desse primeiro carregamento, o aplicativo abre e funciona sem internet. O
 ## O que funciona
 
 - Cadastro inicial configurável e persistente.
-- Modo criança com tarefas diárias, pontos, leitura em voz alta e recompensas.
+- Modo criança com tarefas diárias, pontos, leitura em voz alta, jogos e recompensas.
 - Modo responsável protegido pelo PIN definido no cadastro.
-- Aprovação de tarefas antes da liberação dos pontos.
+- Aprovação de tarefas antes da liberação dos pontos e do passe de jogo.
+- Um passe acumulável por tarefa aprovada e consumo de um passe por partida.
+- Caça-estrelas e Memória dos animais, ambos disponíveis offline.
+- Jogos não geram pontos e não reduzem o saldo de recompensas.
+- Barras de progresso mostram quanto falta para cada recompensa.
 - Aprovação de recompensas antes do desconto dos pontos.
 - Criação de novas tarefas pelo responsável.
 - Progresso e histórico local.
@@ -74,11 +78,16 @@ npm test
 Cobertura automatizada atual:
 
 1. cadastro configurável da Clara e persistência após recarregar;
-2. tarefa solicitada pela criança e aprovada pelo responsável;
-3. nova tarefa criada pelo responsável e exibida para a criança;
-4. recompensa solicitada, aprovada e debitada;
-5. abertura e uso offline após o primeiro acesso;
-6. manifest relativo e navegação básica acessível.
+2. migração sem perda do cadastro e dos pontos existentes;
+3. tarefa solicitada pela criança e aprovada pelo responsável;
+4. liberação, acúmulo e consumo dos passes de jogo;
+5. conclusão do Caça-estrelas;
+6. início e conclusão da Memória dos animais;
+7. nova tarefa criada pelo responsável e exibida para a criança;
+8. acúmulo de pontos e progresso até a recompensa;
+9. recompensa solicitada, aprovada e debitada;
+10. abertura e execução de jogo offline;
+11. manifest relativo e navegação básica acessível.
 
 ## Limites desta versão
 

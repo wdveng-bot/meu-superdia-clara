@@ -1,11 +1,13 @@
 const STORAGE_KEY = 'meu-superdia.v1';
 
 const starterState = {
-  version: 2,
+  version: 3,
   profileComplete: false,
-  child: { name: 'Clara', age: 8, avatar: '🦊' },
+  child: { name: 'Clara', age: 7, avatar: '🦊' },
   parentPin: '',
   points: 0,
+  gamePasses: 0,
+  gameStats: { starGames: 0, memoryGames: 0 },
   tasks: [
     { id: 'arrumar-cama', title: 'Arrumar a cama', icon: '🛏️', category: 'Meu quarto', points: 10, status: 'open' },
     { id: 'escovar-dentes', title: 'Escovar os dentes', icon: '🪥', category: 'Cuidar de mim', points: 10, status: 'open' },
@@ -29,6 +31,8 @@ let currentView = state.profileComplete ? 'child' : 'onboarding';
 let childTab = 'today';
 let parentTab = 'approvals';
 let modal = null;
+let activeGame = null;
+let gameCelebration = null;
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -39,10 +43,20 @@ function loadState() {
     const stored = JSON.parse(localStorage.getItem(STORAGE_KEY));
     if (!stored) return clone(starterState);
     if (stored.version === starterState.version) return stored;
+    if (stored.version === 2) {
+      return {
+        ...stored,
+        version: starterState.version,
+        gamePasses: 0,
+        gameStats: clone(starterState.gameStats),
+      };
+    }
     if (stored.version === 1) {
       return {
         ...stored,
         version: starterState.version,
+        gamePasses: 0,
+        gameStats: clone(starterState.gameStats),
         profileComplete: true,
         child: {
           ...stored.child,
@@ -219,7 +233,7 @@ function renderParentLogin() {
           <p id="pin-error" class="error-message" role="alert"></p>
           <button class="primary-button" type="submit">Entrar</button>
         </form>
-        <p class="demo-note"><strong>Protótipo:</strong> use o PIN 2468. Em produção, ele será definido pelo responsável no primeiro acesso.</p>
+        <p class="demo-note">Use o PIN criado no primeiro acesso. Ele fica salvo somente neste aparelho.</p>
       </section>
     </div>`;
 }
@@ -247,26 +261,30 @@ function renderChild() {
     ? renderToday()
     : childTab === 'rewards'
       ? renderRewards()
-      : renderChildProgress();
+      : childTab === 'games'
+        ? renderGames()
+        : renderChildProgress();
+  const compactGames = childTab === 'games';
   return `
     <div class="app-shell">
       ${topbar()}
-      <section class="hero-row">
-        <div>
-          <p class="eyebrow">Seu dia começa aqui</p>
-          <h1>Olá, ${esc(state.child.name)}!</h1>
-          <p class="lead">${state.child.age} anos · Escolha uma missão e faça no seu ritmo.</p>
-        </div>
-        <div class="avatar" aria-label="Avatar ${esc(state.child.name)}">${state.child.avatar}</div>
-      </section>
-      ${pointsStrip()}
-      ${state.lastRewardApproved ? `
+      ${compactGames ? '' : `
+        <section class="hero-row">
+          <div>
+            <p class="eyebrow">Seu dia começa aqui</p>
+            <h1>Olá, ${esc(state.child.name)}!</h1>
+            <p class="lead">${state.child.age} anos · Escolha uma missão e faça no seu ritmo.</p>
+          </div>
+          <div class="avatar" aria-label="Avatar ${esc(state.child.name)}">${state.child.avatar}</div>
+        </section>
+        ${pointsStrip()}`}
+      ${state.lastRewardApproved && !compactGames ? `
         <aside class="celebration-banner">
           <span class="celebration-icon" aria-hidden="true">🎉</span>
           <div><strong>Recompensa aprovada!</strong><span>${esc(state.lastRewardApproved)}</span></div>
         </aside>` : ''}
       ${content}
-      ${renderChildNav()}
+      ${activeGame ? '' : renderChildNav()}
     </div>`;
 }
 
@@ -299,6 +317,7 @@ function renderTaskCard(task) {
           <span class="points-chip">+${task.points}</span>
         </div>
         <p class="task-meta">${esc(task.category)}</p>
+        <p class="task-unlock">🎟️ Libera 1 partida após a aprovação</p>
         <div class="task-actions">
           ${status}
           <button class="speak-button" data-action="speak-task" data-id="${esc(task.id)}" aria-label="Ouvir tarefa: ${esc(task.title)}">🔊 Ouvir</button>
@@ -322,6 +341,8 @@ function renderRewards() {
 
 function renderRewardCard(reward) {
   const canRequest = state.points >= reward.cost && reward.status === 'available';
+  const progressValue = Math.min(state.points, reward.cost);
+  const progressPercent = Math.round((progressValue / reward.cost) * 100);
   let button = `<button class="reward-action" data-action="request-reward" data-id="${esc(reward.id)}" ${canRequest ? '' : 'disabled'}>${canRequest ? 'Pedir recompensa' : `Faltam ${Math.max(0, reward.cost - state.points)} pontos`}</button>`;
   if (reward.status === 'pending') button = '<span class="status-pill pending">⌛ Pedido enviado</span>';
   if (reward.status === 'approved') button = '<span class="status-pill approved">✓ Aproveitada</span>';
@@ -330,8 +351,81 @@ function renderRewardCard(reward) {
       <div class="reward-icon" aria-hidden="true">${reward.icon}</div>
       <h3>${esc(reward.title)}</h3>
       <p class="reward-cost">★ ${reward.cost} pontos</p>
+      <div class="reward-progress-copy"><span>${progressValue} de ${reward.cost} pontos</span><strong>${progressPercent}%</strong></div>
+      <div class="reward-progress" role="progressbar" aria-label="Progresso para ${esc(reward.title)}" aria-valuemin="0" aria-valuemax="${reward.cost}" aria-valuenow="${progressValue}"><div style="width:${progressPercent}%"></div></div>
       ${button}
     </article>`;
+}
+
+function renderGames() {
+  if (activeGame?.id === 'stars') return renderStarGame();
+  if (activeGame?.id === 'memory') return renderMemoryGame();
+  const canPlay = state.gamePasses > 0;
+  return `
+    <section aria-labelledby="games-title">
+      <div class="section-heading games-heading">
+        <div><p class="eyebrow">Diversão conquistada</p><h2 id="games-title">Jogos</h2></div>
+        <div class="game-balances"><span class="points-mini" aria-label="${state.points} pontos guardados">★ <strong>${state.points}</strong></span><div class="game-pass-badge" aria-label="${state.gamePasses} passes de jogo"><span aria-hidden="true">🎟️</span><strong data-testid="game-passes">${state.gamePasses}</strong></div></div>
+      </div>
+      <div class="game-rule">
+        <strong>1 tarefa aprovada = 1 passe de jogo</strong>
+        <span>Os passes acumulam. Cada partida usa um passe, mas não gasta seus pontos.</span>
+      </div>
+      ${gameCelebration ? `<aside class="game-celebration"><span aria-hidden="true">🏆</span><div><p class="eyebrow">Você conseguiu</p><h3>Partida concluída</h3><p>${esc(gameCelebration)}</p></div></aside>` : ''}
+      <div class="game-grid">
+        <article class="game-card stars">
+          <div class="game-art" aria-hidden="true">⭐</div>
+          <p class="eyebrow">Atenção</p>
+          <h3>Caça-estrelas</h3>
+          <p>Encontre cinco estrelas escondidas no céu.</p>
+          <button class="game-button" data-action="start-game" data-id="stars" aria-label="Jogar Caça-estrelas" ${canPlay ? '' : 'disabled'}>${canPlay ? 'Jogar Caça-estrelas' : 'Faça uma tarefa para liberar'}</button>
+        </article>
+        <article class="game-card memory">
+          <div class="game-art" aria-hidden="true">🐼</div>
+          <p class="eyebrow">Memória</p>
+          <h3>Memória dos animais</h3>
+          <p>Encontre os quatro pares de bichinhos.</p>
+          <button class="game-button" data-action="start-game" data-id="memory" aria-label="Jogar Memória dos animais" ${canPlay ? '' : 'disabled'}>${canPlay ? 'Jogar Memória dos animais' : 'Faça uma tarefa para liberar'}</button>
+        </article>
+      </div>
+    </section>`;
+}
+
+function renderStarGame() {
+  const sky = ['☁️', '⭐', '🌙', '☁️', '⭐', '☁️', '⭐', '🪐', '☁️', '⭐', '☁️', '⭐'];
+  return `
+    <section class="game-stage" aria-labelledby="star-game-title">
+      <button class="ghost-button" data-action="leave-game">← Voltar aos jogos</button>
+      <div class="game-stage-head">
+        <div><p class="eyebrow">Partida liberada</p><h2 id="star-game-title">Caça-estrelas</h2><p class="muted">Toque nas cinco estrelas.</p></div>
+        <div class="game-stage-stats"><span>🎟️ <strong data-testid="game-passes">${state.gamePasses}</strong></span><strong class="game-score" data-testid="star-score">${activeGame.found}/5</strong></div>
+      </div>
+      <div class="star-sky" aria-label="Céu do jogo">
+        ${sky.map((item, index) => item === '⭐'
+          ? `<button class="sky-item star" data-action="find-star" data-id="${index}" aria-label="Estrela">⭐</button>`
+          : `<span class="sky-item" aria-hidden="true">${item}</span>`).join('')}
+      </div>
+    </section>`;
+}
+
+function renderMemoryGame() {
+  const matchedPairs = activeGame.matched.length / 2;
+  return `
+    <section class="game-stage" aria-labelledby="memory-game-title">
+      <button class="ghost-button" data-action="leave-game">← Voltar aos jogos</button>
+      <div class="game-stage-head">
+        <div><p class="eyebrow">Partida liberada</p><h2 id="memory-game-title">Memória dos animais</h2><p class="muted">Vire duas cartas e encontre os pares.</p></div>
+        <div class="game-stage-stats"><span>🎟️ <strong data-testid="game-passes">${state.gamePasses}</strong></span><strong class="game-score">${matchedPairs}/4</strong></div>
+      </div>
+      <div class="memory-board" aria-label="Cartas do jogo da memória">
+        ${activeGame.deck.map((animal, index) => {
+          const isOpen = activeGame.open.includes(index);
+          const isMatched = activeGame.matched.includes(index);
+          const visible = isOpen || isMatched;
+          return `<button class="memory-card ${visible ? 'open' : ''} ${isMatched ? 'matched' : ''}" data-action="flip-memory" data-id="${index}" data-testid="memory-card-${index}" aria-label="${visible ? `Carta ${animal}` : `Carta fechada ${index + 1}`}" ${isMatched ? 'disabled' : ''}>${visible ? animal : '★'}</button>`;
+        }).join('')}
+      </div>
+    </section>`;
 }
 
 function renderChildProgress() {
@@ -356,6 +450,7 @@ function renderChildProgress() {
 function renderChildNav() {
   const items = [
     ['today', 'Hoje'],
+    ['games', 'Jogos'],
     ['rewards', 'Recompensas'],
     ['progress', 'Progresso'],
   ];
@@ -376,6 +471,7 @@ function renderParent() {
       </section>
       <section class="parent-summary" aria-label="Resumo da família">
         <div class="summary-item"><strong class="summary-number">${state.points}</strong><span class="summary-label">pontos disponíveis</span></div>
+        <div class="summary-item"><strong class="summary-number">${state.gamePasses}</strong><span class="summary-label">passes de jogo</span></div>
         <div class="summary-item"><strong class="summary-number">${pendingTasks.length + pendingRewards.length}</strong><span class="summary-label">itens aguardando</span></div>
         <div class="summary-item"><strong class="summary-number">${completed}</strong><span class="summary-label">tarefas concluídas</span></div>
       </section>
@@ -405,7 +501,7 @@ function renderParentContent(pendingTasks, pendingRewards) {
 function renderTaskApproval(task) {
   return `
     <article class="approval-card" data-testid="approval-${esc(task.id)}">
-      <div class="approval-head"><div><p class="eyebrow">Tarefa concluída</p><h3>${esc(task.title)}</h3><p class="muted small">${esc(state.child.name)} pediu a validação.</p></div><span class="points-chip">+${task.points}</span></div>
+      <div class="approval-head"><div><p class="eyebrow">Tarefa concluída</p><h3>${esc(task.title)}</h3><p class="muted small">${esc(state.child.name)} pediu a validação.</p></div><div class="approval-rewards"><span class="points-chip">+${task.points}</span><span class="pass-chip">🎟️ +1</span></div></div>
       <div class="approval-actions">
         <button class="approve-button" data-action="approve-task" data-id="${esc(task.id)}">Aprovar</button>
         <button class="reject-button" data-action="reject-task" data-id="${esc(task.id)}">Pedir para conferir</button>
@@ -559,6 +655,7 @@ app.addEventListener('click', (event) => {
   }
   if (action === 'child-tab') {
     childTab = tab;
+    activeGame = null;
     render();
   }
   if (action === 'parent-tab') {
@@ -575,18 +672,86 @@ app.addEventListener('click', (event) => {
     }
   }
   if (action === 'approve-task') {
-    const task = updateTask(id, (item) => {
-      if (item.status !== 'pending') return;
-      item.status = 'approved';
-      state.points += item.points;
-    });
-    if (task) {
-      addHistory(`“${task.title}” aprovada: +${task.points} pontos.`);
-      saveState();
+    const task = state.tasks.find((item) => item.id === id);
+    if (!task || task.status !== 'pending') return;
+    task.status = 'approved';
+    state.points += task.points;
+    state.gamePasses += 1;
+    addHistory(`“${task.title}” aprovada: +${task.points} pontos e +1 passe de jogo.`);
+    saveState();
+    render();
+    confetti();
+    showToast(`${task.points} pontos e 1 passe de jogo liberados.`);
+  }
+  if (action === 'start-game') {
+    if (state.gamePasses < 1 || !['stars', 'memory'].includes(id)) return;
+    state.gamePasses -= 1;
+    gameCelebration = null;
+    if (id === 'stars') {
+      state.gameStats.starGames += 1;
+      activeGame = { id: 'stars', found: 0, foundIds: [] };
+    } else {
+      state.gameStats.memoryGames += 1;
+      activeGame = {
+        id: 'memory',
+        deck: ['🐶', '🐱', '🐼', '🦊', '🐱', '🦊', '🐶', '🐼'],
+        open: [],
+        matched: [],
+      };
+    }
+    const gameName = id === 'stars' ? 'Caça-estrelas' : 'Memória dos animais';
+    addHistory(`${state.child.name} usou 1 passe para jogar ${gameName}.`);
+    saveState();
+    render();
+  }
+  if (action === 'find-star') {
+    if (activeGame?.id !== 'stars' || activeGame.foundIds.includes(id)) return;
+    activeGame.foundIds.push(id);
+    activeGame.found += 1;
+    if (activeGame.found === 5) {
+      activeGame = null;
+      gameCelebration = 'Você encontrou as cinco estrelas.';
       render();
       confetti();
-      showToast(`${task.points} pontos liberados.`);
+      showToast('Você encontrou todas as estrelas!');
+      return;
     }
+    render();
+  }
+  if (action === 'flip-memory') {
+    if (activeGame?.id !== 'memory' || activeGame.open.length >= 2) return;
+    const cardIndex = Number(id);
+    if (!Number.isInteger(cardIndex) || activeGame.open.includes(cardIndex) || activeGame.matched.includes(cardIndex)) return;
+    activeGame.open.push(cardIndex);
+    if (activeGame.open.length === 1) {
+      render();
+      return;
+    }
+    const [first, second] = activeGame.open;
+    if (activeGame.deck[first] === activeGame.deck[second]) {
+      activeGame.matched.push(first, second);
+      activeGame.open = [];
+      if (activeGame.matched.length === activeGame.deck.length) {
+        activeGame = null;
+        gameCelebration = 'Você encontrou todos os pares de animais.';
+        render();
+        confetti();
+        showToast('Você encontrou todos os pares!');
+        return;
+      }
+      render();
+      return;
+    }
+    render();
+    window.setTimeout(() => {
+      if (activeGame?.id !== 'memory') return;
+      activeGame.open = [];
+      render();
+    }, 700);
+  }
+  if (action === 'leave-game') {
+    activeGame = null;
+    render();
   }
   if (action === 'reject-task') {
     const task = updateTask(id, (item) => { item.status = 'open'; });
