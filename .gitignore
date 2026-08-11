@@ -3,4 +3,5 @@ test-results/
 playwright-report/
 dist/
 __pycache__/
+supabase/.temp/
 *.log
