@@ -1,4 +1,4 @@
-const CACHE_NAME = 'meu-superdia-v5';
+const CACHE_NAME = 'meu-superdia-v6';
 const APP_SHELL = [
   './',
   './index.html',

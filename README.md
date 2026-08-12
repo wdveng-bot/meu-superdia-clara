@@ -38,7 +38,8 @@ Depois desse primeiro carregamento, o aplicativo abre e funciona sem internet. O
 ## O que funciona
 
 - Cadastro inicial configurável e persistente.
-- Modo criança com tarefas diárias, pontos, leitura em voz alta, jogos e recompensas.
+- Modo criança com 15 tarefas distribuídas entre manhã, tarde e noite, pontos, leitura em voz alta, jogos e recompensas.
+- Atualização aditiva da rotina: perfis existentes recebem as novas tarefas sem perder progresso ou tarefas personalizadas.
 - Modo responsável protegido pelo PIN definido no cadastro.
 - Aprovação de tarefas antes da liberação dos pontos e do passe de jogo.
 - Um passe acumulável por tarefa aprovada e consumo de um passe por partida.
@@ -50,7 +51,7 @@ Depois desse primeiro carregamento, o aplicativo abre e funciona sem internet. O
 - Jogos não geram pontos e não reduzem o saldo de recompensas.
 - Barras de progresso mostram quanto falta para cada recompensa.
 - Aprovação de recompensas antes do desconto dos pontos.
-- Criação de novas tarefas pelo responsável.
+- Criação de novas tarefas pelo responsável com escolha do período do dia.
 - Progresso e histórico local.
 - Instalação como PWA no tablet.
 - Funcionamento offline após o primeiro acesso.
@@ -83,18 +84,20 @@ Cobertura automatizada atual:
 
 1. cadastro configurável da Clara e persistência após recarregar;
 2. migração sem perda do cadastro e dos pontos existentes;
-3. tarefa solicitada pela criança e aprovada pelo responsável;
-4. liberação, acúmulo e consumo dos passes de jogo;
-5. três fases do Caça-estrelas, contagem regressiva, sequência e penalidade;
-6. repetição do Caça-estrelas quando o tempo termina;
-7. três fases da Memória com 4, 6 e 8 pares e limite de jogadas;
-8. repetição da Memória ao atingir o limite;
-9. seis desafios, vidas, dicas e recomeço do Laboratório de padrões;
-10. nova tarefa criada pelo responsável e exibida para a criança;
-11. acúmulo de pontos e progresso até a recompensa;
-12. recompensa solicitada, aprovada e debitada;
-13. abertura e execução dos três jogos offline;
-14. manifest relativo e navegação básica acessível.
+3. rotina completa com 15 tarefas agrupadas em manhã, tarde e noite;
+4. migração aditiva sem perder progresso ou tarefas personalizadas;
+5. tarefa solicitada pela criança e aprovada pelo responsável;
+6. liberação, acúmulo e consumo dos passes de jogo;
+7. três fases do Caça-estrelas, contagem regressiva, sequência e penalidade;
+8. repetição do Caça-estrelas quando o tempo termina;
+9. três fases da Memória com 4, 6 e 8 pares e limite de jogadas;
+10. repetição da Memória ao atingir o limite;
+11. seis desafios, vidas, dicas e recomeço do Laboratório de padrões;
+12. nova tarefa criada no período escolhido pelo responsável;
+13. acúmulo de pontos e progresso até a recompensa;
+14. recompensa solicitada, aprovada e debitada;
+15. abertura e execução dos três jogos offline;
+16. manifest relativo e navegação básica acessível.
 
 ## Limites desta versão
 

@@ -4,7 +4,7 @@ from zipfile import ZIP_DEFLATED, ZipFile
 root = Path(__file__).resolve().parents[1]
 dist = root / "dist"
 dist.mkdir(exist_ok=True)
-output = dist / "meu-superdia-v1.3.0.zip"
+output = dist / "meu-superdia-v1.4.0.zip"
 excluded_parts = {"node_modules", "test-results", "playwright-report", "dist", ".git", "__pycache__", ".temp", "supabase"}
 
 with ZipFile(output, "w", ZIP_DEFLATED) as archive:

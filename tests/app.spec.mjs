@@ -83,6 +83,77 @@ test('estado versão 3 sem estatística de padrões é normalizado ao carregar',
   await expect(page.getByRole('heading', { name: /olá, clara/i })).toBeVisible();
 });
 
+test('rotina inicial cobre manhã, tarde e noite com quinze tarefas', async ({ page }) => {
+  await openFreshApp(page);
+
+  await expect(page.getByRole('heading', { name: 'Manhã', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Tarde', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Noite', exact: true })).toBeVisible();
+  await expect(page.locator('[data-testid^="task-"]')).toHaveCount(15);
+  await expect(page.locator('.day-period.morning [data-testid^="task-"]')).toHaveCount(5);
+  await expect(page.locator('.day-period.afternoon [data-testid^="task-"]')).toHaveCount(5);
+  await expect(page.locator('.day-period.night [data-testid^="task-"]')).toHaveCount(5);
+  await expect(page.getByTestId('task-tomar-cafe-da-manha')).toContainText(/tomar o café da manhã/i);
+  await expect(page.getByTestId('task-fazer-a-licao')).toContainText(/fazer a lição/i);
+  await expect(page.getByTestId('task-separar-roupa-de-amanha')).toContainText(/separar a roupa de amanhã/i);
+  await expect(page.getByText(/15 missões restantes/i)).toBeVisible();
+});
+
+test('atualização acrescenta novas tarefas sem apagar progresso nem tarefas personalizadas', async ({ page }) => {
+  await openFreshApp(page);
+  await page.getByTestId('task-arrumar-cama').getByRole('button', { name: /marcar como feita/i }).click();
+  await enterParentMode(page);
+  await page.getByTestId('approval-arrumar-cama').getByRole('button', { name: /aprovar/i }).click();
+  await page.getByRole('button', { name: /nova tarefa/i }).first().click();
+  await page.getByLabel(/nome da tarefa/i).fill('Regar minha plantinha');
+  await page.getByRole('button', { name: /salvar tarefa/i }).click();
+  await page.evaluate(() => {
+    const stored = JSON.parse(localStorage.getItem('meu-superdia.v1'));
+    stored.version = 3;
+    stored.tasks = stored.tasks.filter((task) => ['arrumar-cama', 'escovar-dentes', 'organizar-mochila', 'guardar-prato', 'regar-minha-plantinha'].includes(task.id));
+    delete stored.tasks.find((task) => task.id === 'regar-minha-plantinha').period;
+    localStorage.setItem('meu-superdia.v1', JSON.stringify(stored));
+  });
+
+  await page.reload();
+
+  await expect(page.getByTestId('points-balance')).toHaveText('10');
+  await expect(page.getByTestId('task-arrumar-cama')).toContainText(/concluída/i);
+  await expect(page.getByTestId('task-regar-minha-plantinha')).toBeVisible();
+  await expect(page.locator('[data-testid^="task-"]')).toHaveCount(16);
+  await expect(page.getByRole('heading', { name: /qualquer hora/i })).toBeVisible();
+});
+
+test('migração preserva tarefa personalizada que colide com uma nova tarefa padrão', async ({ page }) => {
+  await openFreshApp(page);
+  await page.evaluate(() => {
+    const stored = JSON.parse(localStorage.getItem('meu-superdia.v1'));
+    stored.version = 3;
+    stored.points = 37;
+    stored.gamePasses = 2;
+    stored.tasks = stored.tasks.filter((task) => ['arrumar-cama', 'escovar-dentes', 'organizar-mochila', 'guardar-prato'].includes(task.id));
+    stored.tasks.push({ id: 'tomar-banho', title: 'Tomar banho', icon: '⭐', category: 'Missão da família', points: 33, status: 'approved' });
+    stored.history.push({ label: 'Tarefa personalizada “Tomar banho” concluída.', at: '2026-08-10T12:00:00.000Z' });
+    localStorage.setItem('meu-superdia.v1', JSON.stringify(stored));
+  });
+
+  await page.reload();
+
+  const bathTasks = page.getByRole('heading', { name: 'Tomar banho', exact: true });
+  await expect(bathTasks).toHaveCount(2);
+  const custom = page.locator('.day-period.anytime').getByText('Tomar banho', { exact: true });
+  await expect(custom).toBeVisible();
+  await expect(page.locator('.day-period.night').getByText('Tomar banho', { exact: true })).toBeVisible();
+  const migrated = await page.evaluate(() => JSON.parse(localStorage.getItem('meu-superdia.v1')));
+  const customTask = migrated.tasks.find((task) => task.title === 'Tomar banho' && task.points === 33);
+  expect(customTask.id).not.toBe('tomar-banho');
+  expect(customTask.period).toBe('anytime');
+  expect(customTask.status).toBe('approved');
+  expect(migrated.history.some((entry) => entry.label.includes('personalizada'))).toBe(true);
+  expect(migrated.points).toBe(37);
+  expect(migrated.gamePasses).toBe(2);
+});
+
 test('criança solicita aprovação e só recebe pontos após validação do responsável', async ({ page }) => {
   await openFreshApp(page);
 
@@ -453,6 +524,20 @@ test('laboratório de padrões permite recomeçar ao perder as três vidas', asy
   await expect(page.getByTestId('pattern-lives')).toHaveText('3');
 });
 
+test('responsável cria uma tarefa para um período específico do dia', async ({ page }) => {
+  await openFreshApp(page);
+  await enterParentMode(page);
+  await page.getByRole('button', { name: /nova tarefa/i }).first().click();
+  await page.getByLabel(/nome da tarefa/i).fill('Ajudar a preparar o jantar');
+  await page.getByLabel(/período do dia/i).selectOption('night');
+  await page.getByRole('button', { name: /salvar tarefa/i }).click();
+  await page.getByRole('button', { name: /ver como clara/i }).click();
+
+  const night = page.locator('.day-period.night');
+  await expect(night.getByTestId('task-ajudar-a-preparar-o-jantar')).toBeVisible();
+  await expect(page.locator('.day-period.morning').getByTestId('task-ajudar-a-preparar-o-jantar')).toHaveCount(0);
+});
+
 test('responsável cria uma tarefa e ela aparece imediatamente para a criança', async ({ page }) => {
   await openFreshApp(page);
   await enterParentMode(page);
@@ -464,8 +549,9 @@ test('responsável cria uma tarefa e ela aparece imediatamente para a criança',
   await expect(page.getByText(/tarefa criada/i)).toBeVisible();
 
   await page.getByRole('button', { name: /ver como clara/i }).click();
-  await expect(page.getByText('Guardar os brinquedos')).toBeVisible();
-  await expect(page.getByText('+12')).toBeVisible();
+  const createdTask = page.getByTestId('task-guardar-os-brinquedos');
+  await expect(createdTask).toContainText('Guardar os brinquedos');
+  await expect(createdTask).toContainText('+12');
 });
 
 test('pontos acumulados mostram o progresso até a recompensa', async ({ page }) => {
@@ -552,4 +638,18 @@ test('interface tem manifest relativo e navegação acessível', async ({ page }
   await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', './manifest.webmanifest');
   await expect(page.getByRole('main')).toBeVisible();
   await expect(page.getByRole('heading', { name: /criar o perfil da criança/i })).toBeVisible();
+});
+
+test('atalho de teclado fica oculto até receber foco', async ({ page }) => {
+  await page.goto('/');
+  const skipLink = page.getByRole('link', { name: /pular para o conteúdo/i });
+  const before = await skipLink.boundingBox();
+  expect(before.width).toBeLessThanOrEqual(1);
+  expect(before.height).toBeLessThanOrEqual(1);
+
+  await page.keyboard.press('Tab');
+  await expect(skipLink).toBeFocused();
+  const focused = await skipLink.boundingBox();
+  expect(focused.y).toBeGreaterThanOrEqual(0);
+  expect(focused.width).toBeGreaterThan(1);
 });

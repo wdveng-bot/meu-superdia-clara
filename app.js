@@ -42,20 +42,40 @@ const PATTERN_CHALLENGES = [
   { sequence: ['2', '5', '8', '11'], options: ['12', '13', '14'], answer: '14', clue: 'Some três a cada número.' },
 ];
 
+const TASK_PERIODS = [
+  { id: 'morning', title: 'Manhã', icon: '☀️', helper: 'Comece o dia cuidando de você e das suas coisas.' },
+  { id: 'afternoon', title: 'Tarde', icon: '🌤️', helper: 'Depois da escola, organize, aprenda e ajude um pouco.' },
+  { id: 'night', title: 'Noite', icon: '🌙', helper: 'Prepare tudo com calma para descansar bem.' },
+  { id: 'anytime', title: 'Qualquer hora', icon: '⭐', helper: 'Missões extras criadas pela família.' },
+];
+
+const DEFAULT_TASKS = [
+  { id: 'arrumar-cama', title: 'Arrumar a cama', icon: '🛏️', category: 'Meu quarto', period: 'morning', points: 10, status: 'open' },
+  { id: 'escovar-dentes', title: 'Escovar os dentes', icon: '🪥', category: 'Cuidar de mim', period: 'morning', points: 10, status: 'open' },
+  { id: 'tomar-cafe-da-manha', title: 'Tomar o café da manhã', icon: '🥣', category: 'Cuidar de mim', period: 'morning', points: 10, status: 'open' },
+  { id: 'trocar-de-roupa', title: 'Trocar de roupa', icon: '👕', category: 'Cuidar de mim', period: 'morning', points: 10, status: 'open' },
+  { id: 'organizar-mochila', title: 'Organizar a mochila', icon: '🎒', category: 'Escola', period: 'morning', points: 20, status: 'open' },
+  { id: 'guardar-prato', title: 'Levar o prato para a pia', icon: '🍽️', category: 'Ajudar em casa', period: 'afternoon', points: 10, status: 'open' },
+  { id: 'fazer-a-licao', title: 'Fazer a lição', icon: '✏️', category: 'Escola', period: 'afternoon', points: 20, status: 'open' },
+  { id: 'ler-quinze-minutos', title: 'Ler por 15 minutos', icon: '📚', category: 'Aprender', period: 'afternoon', points: 15, status: 'open' },
+  { id: 'guardar-brinquedos', title: 'Guardar os brinquedos', icon: '🧸', category: 'Meu quarto', period: 'afternoon', points: 10, status: 'open' },
+  { id: 'separar-roupa-suja', title: 'Colocar a roupa suja no cesto', icon: '🧺', category: 'Ajudar em casa', period: 'afternoon', points: 10, status: 'open' },
+  { id: 'tomar-banho', title: 'Tomar banho', icon: '🚿', category: 'Cuidar de mim', period: 'night', points: 10, status: 'open' },
+  { id: 'colocar-pijama', title: 'Colocar o pijama', icon: '👚', category: 'Cuidar de mim', period: 'night', points: 10, status: 'open' },
+  { id: 'escovar-dentes-noite', title: 'Escovar os dentes antes de dormir', icon: '🪥', category: 'Cuidar de mim', period: 'night', points: 10, status: 'open' },
+  { id: 'separar-roupa-de-amanha', title: 'Separar a roupa de amanhã', icon: '🧦', category: 'Organização', period: 'night', points: 10, status: 'open' },
+  { id: 'deitar-no-horario', title: 'Deitar no horário combinado', icon: '😴', category: 'Descansar', period: 'night', points: 15, status: 'open' },
+];
+
 const starterState = {
-  version: 3,
+  version: 4,
   profileComplete: false,
   child: { name: 'Clara', age: 7, avatar: '🦊' },
   parentPin: '',
   points: 0,
   gamePasses: 0,
   gameStats: { starGames: 0, memoryGames: 0, patternGames: 0 },
-  tasks: [
-    { id: 'arrumar-cama', title: 'Arrumar a cama', icon: '🛏️', category: 'Meu quarto', points: 10, status: 'open' },
-    { id: 'escovar-dentes', title: 'Escovar os dentes', icon: '🪥', category: 'Cuidar de mim', points: 10, status: 'open' },
-    { id: 'organizar-mochila', title: 'Organizar a mochila', icon: '🎒', category: 'Escola', points: 20, status: 'open' },
-    { id: 'guardar-prato', title: 'Levar o prato para a pia', icon: '🍽️', category: 'Ajudar em casa', points: 10, status: 'open' },
-  ],
+  tasks: DEFAULT_TASKS,
   rewards: [
     { id: 'escolher-filme', title: 'Escolher o filme da família', icon: '🎬', cost: 25, status: 'available' },
     { id: 'brincadeira-especial', title: '30 minutos de brincadeira especial', icon: '🧩', cost: 40, status: 'available' },
@@ -110,31 +130,70 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+function mergeDefaultTasks(storedTasks = [], sourceVersion = starterState.version) {
+  const validPeriods = new Set(TASK_PERIODS.map((period) => period.id));
+  const defaultIds = new Set(DEFAULT_TASKS.map((task) => task.id));
+  const recognizedDefaultIds = sourceVersion >= 4
+    ? defaultIds
+    : new Set(['arrumar-cama', 'escovar-dentes', 'organizar-mochila', 'guardar-prato']);
+  const storedDefaults = new Map(
+    storedTasks
+      .filter((task) => recognizedDefaultIds.has(task.id))
+      .map((task) => [task.id, task]),
+  );
+  const defaults = DEFAULT_TASKS.map((task) => ({ ...task, ...(storedDefaults.get(task.id) || {}) }));
+  const usedIds = new Set(defaultIds);
+  const custom = storedTasks
+    .filter((task) => !recognizedDefaultIds.has(task.id))
+    .map((task) => {
+      const originalId = String(task.id || 'tarefa');
+      const baseId = defaultIds.has(originalId) ? `custom-${originalId}` : originalId;
+      let id = baseId;
+      let suffix = 2;
+      while (usedIds.has(id)) {
+        id = `${baseId}-${suffix}`;
+        suffix += 1;
+      }
+      usedIds.add(id);
+      return { ...task, id, period: validPeriods.has(task.period) ? task.period : 'anytime' };
+    });
+  return [...defaults, ...custom];
+}
+
+function normalizeStoredState(stored) {
+  const sourceVersion = stored.version;
+  const gameStats = { ...(stored.gameStats || {}) };
+  for (const [key, defaultValue] of Object.entries(starterState.gameStats)) {
+    if (!Number.isFinite(gameStats[key])) gameStats[key] = defaultValue;
+  }
+  return {
+    ...stored,
+    version: starterState.version,
+    gamePasses: Number.isFinite(stored.gamePasses) ? stored.gamePasses : 0,
+    gameStats,
+    tasks: mergeDefaultTasks(stored.tasks, sourceVersion),
+  };
+}
+
 function loadState() {
   try {
     const stored = JSON.parse(localStorage.getItem(STORAGE_KEY));
     if (!stored) return clone(starterState);
-    if (stored.version === starterState.version) {
-      const gameStats = { ...(stored.gameStats || {}) };
-      for (const [key, defaultValue] of Object.entries(starterState.gameStats)) {
-        if (!Number.isFinite(gameStats[key])) gameStats[key] = defaultValue;
-      }
-      const normalized = { ...stored, gameStats };
+    if (stored.version === starterState.version || stored.version === 3) {
+      const normalized = normalizeStoredState(stored);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
       return normalized;
     }
     if (stored.version === 2) {
-      return {
+      return normalizeStoredState({
         ...stored,
-        version: starterState.version,
         gamePasses: 0,
         gameStats: clone(starterState.gameStats),
-      };
+      });
     }
     if (stored.version === 1) {
-      return {
+      return normalizeStoredState({
         ...stored,
-        version: starterState.version,
         gamePasses: 0,
         gameStats: clone(starterState.gameStats),
         profileComplete: true,
@@ -143,7 +202,7 @@ function loadState() {
           name: stored.child?.name === 'Lulu' ? 'Clara' : (stored.child?.name || 'Clara'),
         },
         parentPin: stored.parentPin || '2468',
-      };
+      });
     }
     return clone(starterState);
   } catch {
@@ -370,15 +429,26 @@ function renderChild() {
 
 function renderToday() {
   const remaining = state.tasks.filter((task) => task.status !== 'approved').length;
+  const periodSections = TASK_PERIODS.map((period) => {
+    const tasks = state.tasks.filter((task) => (task.period || 'anytime') === period.id);
+    if (!tasks.length) return '';
+    const completed = tasks.filter((task) => task.status === 'approved').length;
+    return `
+      <section class="day-period ${period.id}" aria-labelledby="period-${period.id}">
+        <div class="period-heading">
+          <div class="period-title"><span aria-hidden="true">${period.icon}</span><div><h3 id="period-${period.id}">${period.title}</h3><p>${period.helper}</p></div></div>
+          <strong>${completed}/${tasks.length}</strong>
+        </div>
+        <div class="task-list">${tasks.map(renderTaskCard).join('')}</div>
+      </section>`;
+  }).join('');
   return `
     <section aria-labelledby="today-title">
       <div class="section-heading">
-        <div><p class="eyebrow">Missões de hoje</p><h2 id="today-title">Um passo de cada vez</h2></div>
+        <div><p class="eyebrow">Missões de hoje</p><h2 id="today-title">Seu dia, do começo ao fim</h2></div>
         <p class="muted small">${remaining} ${remaining === 1 ? 'missão restante' : 'missões restantes'}</p>
       </div>
-      <div class="task-list">
-        ${state.tasks.map(renderTaskCard).join('')}
-      </div>
+      <div class="day-timeline">${periodSections}</div>
     </section>`;
 }
 
@@ -714,7 +784,10 @@ function renderTaskManagement() {
     <section aria-labelledby="manage-title">
       <div class="section-heading"><div><p class="eyebrow">Rotina</p><h2 id="manage-title">Tarefas cadastradas</h2></div><button class="secondary-button" data-action="open-task-modal">Nova tarefa</button></div>
       <div class="approval-list">
-        ${state.tasks.map((task) => `<article class="approval-card"><div class="approval-head"><div><h3>${task.icon} ${esc(task.title)}</h3><p class="muted small">${esc(task.category)} · ${task.points} pontos</p></div><span class="status-pill ${task.status === 'approved' ? 'approved' : task.status === 'pending' ? 'pending' : ''}">${task.status === 'approved' ? 'Concluída' : task.status === 'pending' ? 'Aguardando' : 'Disponível'}</span></div></article>`).join('')}
+        ${state.tasks.map((task) => {
+          const period = TASK_PERIODS.find((item) => item.id === (task.period || 'anytime'))?.title || 'Qualquer hora';
+          return `<article class="approval-card"><div class="approval-head"><div><h3>${task.icon} ${esc(task.title)}</h3><p class="muted small">${esc(period)} · ${esc(task.category)} · ${task.points} pontos</p></div><span class="status-pill ${task.status === 'approved' ? 'approved' : task.status === 'pending' ? 'pending' : ''}">${task.status === 'approved' ? 'Concluída' : task.status === 'pending' ? 'Aguardando' : 'Disponível'}</span></div></article>`;
+        }).join('')}
       </div>
     </section>`;
 }
@@ -770,9 +843,12 @@ function renderModal() {
         <div class="field"><label for="task-title">Nome da tarefa</label><input id="task-title" name="title" maxlength="60" required placeholder="Ex.: Guardar os brinquedos"></div>
         <div class="form-row">
           <div class="field"><label for="task-points">Quantos pontos</label><input id="task-points" name="points" type="number" min="1" max="100" value="10" required></div>
-          <div class="field"><label for="task-category">Categoria</label><select id="task-category" name="category"><option>Meu quarto</option><option>Cuidar de mim</option><option>Escola</option><option>Ajudar em casa</option><option>Gentileza</option></select></div>
+          <div class="field"><label for="task-category">Categoria</label><select id="task-category" name="category"><option>Meu quarto</option><option>Cuidar de mim</option><option>Escola</option><option>Ajudar em casa</option><option>Gentileza</option><option>Aprender</option><option>Organização</option><option>Descansar</option></select></div>
         </div>
-        <div class="field"><label for="task-icon">Símbolo</label><select id="task-icon" name="icon"><option>⭐</option><option>🧸</option><option>🧹</option><option>📚</option><option>🌱</option><option>🐾</option></select></div>
+        <div class="form-row">
+          <div class="field"><label for="task-period">Período do dia</label><select id="task-period" name="period"><option value="morning">Manhã</option><option value="afternoon">Tarde</option><option value="night">Noite</option><option value="anytime" selected>Qualquer hora</option></select></div>
+          <div class="field"><label for="task-icon">Símbolo</label><select id="task-icon" name="icon"><option>⭐</option><option>🧸</option><option>🧹</option><option>📚</option><option>🌱</option><option>🐾</option><option>☀️</option><option>🌙</option></select></div>
+        </div>
         <div class="form-actions"><button class="ghost-button" type="button" data-action="close-modal">Cancelar</button><button class="primary-button" type="submit">Salvar tarefa</button></div>
       </form>
     </section>`;
@@ -1232,6 +1308,7 @@ document.addEventListener('submit', (event) => {
     title,
     icon: String(form.get('icon') || '⭐'),
     category: String(form.get('category') || 'Ajudar em casa'),
+    period: String(form.get('period') || 'anytime'),
     points: Math.round(points),
     status: 'open',
   });
