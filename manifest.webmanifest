@@ -1,13 +1,13 @@
 {
   "name": "Meu Superdia",
   "short_name": "Superdia",
-  "description": "Tarefas e recompensas em família para crianças de 5 a 10 anos.",
+  "description": "Missões e recompensas em família para filhos de 5 a 10 anos.",
   "lang": "pt-BR",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#fffaf0",
-  "theme_color": "#0f6b57",
+  "background_color": "#fffdf5",
+  "theme_color": "#0b8068",
   "orientation": "portrait-primary",
   "icons": [
     {

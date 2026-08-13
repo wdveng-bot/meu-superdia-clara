@@ -1,8 +1,8 @@
 {
   "name": "meu-superdia",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "private": true,
-  "description": "Aplicativo de tarefas e recompensas para crianças de 5 a 10 anos.",
+  "description": "Aplicativo de missões e recompensas para filhos de 5 a 10 anos.",
   "scripts": {
     "start": "python -m http.server 4187",
     "test": "playwright test",

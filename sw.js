@@ -1,10 +1,11 @@
-const CACHE_NAME = 'meu-superdia-v6';
+const CACHE_NAME = 'meu-superdia-v7';
 const APP_SHELL = [
   './',
   './index.html',
   './styles.css',
   './app.js',
   './manifest.webmanifest',
+  './assets/aventura-mascotes.webp',
   './icons/icon-192.png',
   './icons/icon-512.png',
 ];

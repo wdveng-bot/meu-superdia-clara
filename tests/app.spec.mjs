@@ -17,13 +17,14 @@ async function resetApp(page) {
 }
 
 async function registerFamily(page, childName = 'Clara') {
-  await expect(page.getByRole('heading', { name: /criar o perfil da criança/i })).toBeVisible();
-  await page.getByLabel(/nome da criança/i).fill(childName);
+  await expect(page.getByRole('heading', { name: /criar o perfil do seu filho/i })).toBeVisible();
+  await page.getByLabel(/nome do seu filho/i).fill(childName);
   await page.getByLabel(/idade/i).selectOption('8');
+  await page.getByLabel(/menina ou menino/i).selectOption('girl');
   await page.getByLabel(/avatar/i).selectOption('🦊');
   await page.getByLabel(/^crie um pin/i).fill('2468');
   await page.getByLabel(/confirme o pin/i).fill('2468');
-  await page.getByRole('button', { name: /começar/i }).click();
+  await page.getByRole('button', { name: /começar aventura/i }).click();
   await expect(page.getByRole('heading', { name: new RegExp(`olá, ${childName}`, 'i') })).toBeVisible();
 }
 
@@ -39,6 +40,77 @@ async function enterParentMode(page) {
   await page.getByRole('button', { name: /^entrar$/i }).click();
   await expect(page.getByRole('heading', { name: /painel da família/i })).toBeVisible();
 }
+
+test('onboarding usa filho e dispositivo na linguagem para a família', async ({ page }) => {
+  await resetApp(page);
+
+  await expect(page.getByRole('heading', { name: /vamos criar o perfil do seu filho \(a\)/i })).toBeVisible();
+  await expect(page.getByText(/salvos neste dispositivo/i)).toBeVisible();
+  await expect(page.locator('body')).not.toContainText(/criança|tablet/i);
+});
+
+test('onboarding apresenta uma aventura infantil com mascotes e conquistas inclusive offline', async ({ page, context }) => {
+  await resetApp(page);
+
+  const adventure = page.getByTestId('onboarding-adventure');
+  await expect(adventure).toBeVisible();
+  await expect(adventure.getByText(/missões divertidas/i)).toBeVisible();
+  await expect(adventure.getByText(/estrelas para juntar/i)).toBeVisible();
+  await expect(adventure.getByText(/prêmios em família/i)).toBeVisible();
+  await expect(adventure.locator('img')).toHaveAttribute('src', /aventura-mascotes\.webp$/);
+  await expect(adventure.locator('img')).toHaveJSProperty('complete', true);
+  await page.evaluate(() => navigator.serviceWorker.ready);
+  await page.reload({ waitUntil: 'networkidle' });
+  await context.setOffline(true);
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await expect(page.getByTestId('onboarding-adventure').locator('img')).toHaveJSProperty('naturalWidth', 1200);
+  await context.setOffline(false);
+});
+
+test('cadastro salva a escolha menino e mantém após recarregar', async ({ page }) => {
+  await resetApp(page);
+  await page.getByLabel(/nome do seu filho/i).fill('Theo');
+  await page.getByLabel(/idade/i).selectOption('7');
+  await page.getByLabel(/menina ou menino/i).selectOption('boy');
+  await page.getByLabel(/avatar/i).selectOption('🦁');
+  await page.getByLabel(/^crie um pin/i).fill('2468');
+  await page.getByLabel(/confirme o pin/i).fill('2468');
+  await page.getByRole('button', { name: /começar aventura/i }).click();
+
+  await expect(page.getByText(/menino.*7 anos/i)).toBeVisible();
+  await page.reload();
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('meu-superdia.v1')));
+  expect(stored.child.gender).toBe('boy');
+  await expect(page.getByText(/menino.*7 anos/i)).toBeVisible();
+});
+
+test('atualização define menina em perfil antigo sem apagar os demais dados', async ({ page }) => {
+  await resetApp(page);
+  await page.evaluate(() => {
+    const stored = {
+      version: 4,
+      profileComplete: true,
+      child: { name: 'Clara', age: 7, avatar: '🦊' },
+      parentPin: '2468',
+      points: 42,
+      gamePasses: 3,
+      gameStats: { starGames: 1, memoryGames: 2, patternGames: 3 },
+      tasks: [],
+      rewards: [],
+      history: [{ label: 'Histórico preservado', at: '2026-08-13T10:00:00.000Z' }],
+      lastRewardApproved: null,
+    };
+    localStorage.setItem('meu-superdia.v1', JSON.stringify(stored));
+  });
+  await page.reload();
+
+  const migrated = await page.evaluate(() => JSON.parse(localStorage.getItem('meu-superdia.v1')));
+  expect(migrated.version).toBe(5);
+  expect(migrated.child.gender).toBe('girl');
+  expect(migrated.points).toBe(42);
+  expect(migrated.gamePasses).toBe(3);
+  expect(migrated.history).toHaveLength(1);
+});
 
 test('cadastro permite configurar Clara e permanece após fechar e abrir', async ({ page }) => {
   await resetApp(page);
@@ -154,7 +226,7 @@ test('migração preserva tarefa personalizada que colide com uma nova tarefa pa
   expect(migrated.gamePasses).toBe(2);
 });
 
-test('criança solicita aprovação e só recebe pontos após validação do responsável', async ({ page }) => {
+test('filho solicita aprovação e só recebe pontos após validação do responsável', async ({ page }) => {
   await openFreshApp(page);
 
   await expect(page.getByTestId('points-balance')).toHaveText('0');
@@ -190,7 +262,7 @@ test('aprovar uma tarefa libera e consome um passe para jogar', async ({ page })
   await page.getByRole('button', { name: /jogar caça-estrelas/i }).click();
   await expect(page.getByTestId('game-passes')).toHaveText('0');
   await expect(page.getByRole('heading', { name: /caça-estrelas/i })).toBeVisible();
-  await expect(page.getByRole('navigation', { name: /navegação da criança/i })).toBeHidden();
+  await expect(page.getByRole('navigation', { name: /navegação do perfil do filho/i })).toBeHidden();
   await expect(page.getByRole('button', { name: /voltar aos jogos/i })).toBeVisible();
 });
 
@@ -424,6 +496,7 @@ test('callback antigo da memória não altera uma nova partida', async ({ page }
 });
 
 test('memória dos animais termina após três fases progressivas', async ({ page }) => {
+  test.slow();
   await openFreshApp(page);
   await page.getByTestId('task-arrumar-cama').getByRole('button', { name: /marcar como feita/i }).click();
   await enterParentMode(page);
@@ -538,7 +611,7 @@ test('responsável cria uma tarefa para um período específico do dia', async (
   await expect(page.locator('.day-period.morning').getByTestId('task-ajudar-a-preparar-o-jantar')).toHaveCount(0);
 });
 
-test('responsável cria uma tarefa e ela aparece imediatamente para a criança', async ({ page }) => {
+test('responsável cria uma tarefa e ela aparece imediatamente para o filho', async ({ page }) => {
   await openFreshApp(page);
   await enterParentMode(page);
 
@@ -566,7 +639,7 @@ test('pontos acumulados mostram o progresso até a recompensa', async ({ page })
   await page.getByRole('button', { name: /ver como clara/i }).click();
   await expect(page.getByTestId('points-balance')).toHaveText('20');
 
-  await page.getByRole('button', { name: /^recompensas$/i }).click();
+  await page.getByRole('button', { name: /^prêmios$/i }).click();
   const reward = page.getByTestId('reward-escolher-filme');
   await expect(reward).toContainText('20 de 25 pontos');
   await expect(reward.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '20');
@@ -586,7 +659,7 @@ test('recompensa exige saldo e aprovação do responsável', async ({ page }) =>
   }
   await page.getByRole('button', { name: /ver como clara/i }).click();
 
-  await page.getByRole('button', { name: /^recompensas$/i }).click();
+  await page.getByRole('button', { name: /^prêmios$/i }).click();
   const reward = page.getByTestId('reward-escolher-filme');
   await reward.getByRole('button', { name: /pedir recompensa/i }).click();
   await expect(reward).toContainText(/pedido enviado/i);
@@ -598,7 +671,7 @@ test('recompensa exige saldo e aprovação do responsável', async ({ page }) =>
   await expect(page.locator('.celebration-banner').getByText(/recompensa aprovada/i)).toBeVisible();
 });
 
-test('continua abrindo e executando os três jogos offline no tablet', async ({ page, context }) => {
+test('continua abrindo e executando os três jogos offline no dispositivo', async ({ page, context }) => {
   await openFreshApp(page);
   for (const id of ['arrumar-cama', 'escovar-dentes', 'organizar-mochila']) {
     await page.getByTestId(`task-${id}`).getByRole('button', { name: /marcar como feita/i }).click();
@@ -637,7 +710,7 @@ test('interface tem manifest relativo e navegação acessível', async ({ page }
   await expect(page).toHaveTitle(/meu superdia/i);
   await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', './manifest.webmanifest');
   await expect(page.getByRole('main')).toBeVisible();
-  await expect(page.getByRole('heading', { name: /criar o perfil da criança/i })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /criar o perfil do seu filho/i })).toBeVisible();
 });
 
 test('atalho de teclado fica oculto até receber foco', async ({ page }) => {

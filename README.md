@@ -1,23 +1,24 @@
 # Meu Superdia
 
-Aplicativo mobile/PWA de tarefas, jogos e recompensas para crianças de 5 a 10 anos.
+Aplicativo mobile/PWA de missões, jogos e recompensas para filhos de 5 a 10 anos.
 
 ## Acesso online
 
-Abra no tablet:
+Abra no dispositivo:
 
 `https://wdveng-bot.github.io/meu-superdia-clara/`
 
 No primeiro acesso, o responsável configura:
 
-- nome da criança, já sugerido como Clara;
+- nome do filho, já sugerido como Clara;
 - idade entre 5 e 10 anos;
+- escolha entre menina e menino;
 - avatar;
 - PIN do responsável.
 
-O cadastro, os pontos, os passes de jogo, as tarefas e as recompensas permanecem salvos no mesmo tablet.
+O cadastro, os pontos, os passes de jogo, as tarefas e as recompensas permanecem salvos no mesmo dispositivo.
 
-## Instalar no tablet e usar offline
+## Instalar no dispositivo e usar offline
 
 ### iPad
 
@@ -26,7 +27,7 @@ O cadastro, os pontos, os passes de jogo, as tarefas e as recompensas permanecem
 3. Escolha **Adicionar à Tela de Início**.
 4. Abra o Meu Superdia pelo ícone instalado pelo menos uma vez com internet.
 
-### Tablet Android
+### Dispositivo Android
 
 1. Abra o endereço no Chrome enquanto estiver online.
 2. Abra o menu do navegador.
@@ -38,7 +39,7 @@ Depois desse primeiro carregamento, o aplicativo abre e funciona sem internet. O
 ## O que funciona
 
 - Cadastro inicial configurável e persistente.
-- Modo criança com 15 tarefas distribuídas entre manhã, tarde e noite, pontos, leitura em voz alta, jogos e recompensas.
+- Perfil do filho com 15 tarefas distribuídas entre manhã, tarde e noite, pontos, leitura em voz alta, jogos e recompensas.
 - Atualização aditiva da rotina: perfis existentes recebem as novas tarefas sem perder progresso ou tarefas personalizadas.
 - Modo responsável protegido pelo PIN definido no cadastro.
 - Aprovação de tarefas antes da liberação dos pontos e do passe de jogo.
@@ -53,7 +54,7 @@ Depois desse primeiro carregamento, o aplicativo abre e funciona sem internet. O
 - Aprovação de recompensas antes do desconto dos pontos.
 - Criação de novas tarefas pelo responsável com escolha do período do dia.
 - Progresso e histórico local.
-- Instalação como PWA no tablet.
+- Instalação como PWA no dispositivo.
 - Funcionamento offline após o primeiro acesso.
 - Sem anúncios, rastreadores, chat ou pagamentos.
 
@@ -82,26 +83,29 @@ npm test
 
 Cobertura automatizada atual:
 
-1. cadastro configurável da Clara e persistência após recarregar;
-2. migração sem perda do cadastro e dos pontos existentes;
-3. rotina completa com 15 tarefas agrupadas em manhã, tarde e noite;
-4. migração aditiva sem perder progresso ou tarefas personalizadas;
-5. tarefa solicitada pela criança e aprovada pelo responsável;
-6. liberação, acúmulo e consumo dos passes de jogo;
-7. três fases do Caça-estrelas, contagem regressiva, sequência e penalidade;
-8. repetição do Caça-estrelas quando o tempo termina;
-9. três fases da Memória com 4, 6 e 8 pares e limite de jogadas;
-10. repetição da Memória ao atingir o limite;
-11. seis desafios, vidas, dicas e recomeço do Laboratório de padrões;
-12. nova tarefa criada no período escolhido pelo responsável;
-13. acúmulo de pontos e progresso até a recompensa;
-14. recompensa solicitada, aprovada e debitada;
-15. abertura e execução dos três jogos offline;
-16. manifest relativo e navegação básica acessível.
+1. linguagem de onboarding com “filho” e “dispositivo”;
+2. painel de aventura com mascotes e carregamento offline da ilustração;
+3. escolha entre menina e menino com persistência após recarregar;
+4. migração do perfil antigo sem perda de cadastro, pontos, passes ou histórico;
+5. cadastro configurável da Clara e persistência após recarregar;
+6. rotina completa com 15 tarefas agrupadas em manhã, tarde e noite;
+7. migração aditiva sem perder progresso ou tarefas personalizadas;
+8. tarefa solicitada pelo filho e aprovada pelo responsável;
+9. liberação, acúmulo e consumo dos passes de jogo;
+10. três fases do Caça-estrelas, contagem regressiva, sequência e penalidade;
+11. repetição do Caça-estrelas quando o tempo termina;
+12. três fases da Memória com 4, 6 e 8 pares e limite de jogadas;
+13. repetição da Memória ao atingir o limite;
+14. seis desafios, vidas, dicas e recomeço do Laboratório de padrões;
+15. nova tarefa criada no período escolhido pelo responsável;
+16. acúmulo de pontos e progresso até a recompensa;
+17. recompensa solicitada, aprovada e debitada;
+18. abertura e execução dos três jogos offline;
+19. manifest relativo e navegação básica acessível.
 
 ## Limites desta versão
 
 - Um perfil infantil por navegador/aparelho.
-- Sem conta na nuvem ou sincronização entre tablets.
+- Sem conta na nuvem ou sincronização entre dispositivos.
 - Sem notificações push remotas.
 - O PIN protege a interface local, mas não substitui autenticação de servidor.

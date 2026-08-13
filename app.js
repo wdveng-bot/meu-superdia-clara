@@ -68,9 +68,9 @@ const DEFAULT_TASKS = [
 ];
 
 const starterState = {
-  version: 4,
+  version: 5,
   profileComplete: false,
-  child: { name: 'Clara', age: 7, avatar: '🦊' },
+  child: { name: 'Clara', age: 7, gender: 'girl', avatar: '🦊' },
   parentPin: '',
   points: 0,
   gamePasses: 0,
@@ -163,12 +163,17 @@ function mergeDefaultTasks(storedTasks = [], sourceVersion = starterState.versio
 function normalizeStoredState(stored) {
   const sourceVersion = stored.version;
   const gameStats = { ...(stored.gameStats || {}) };
+  const child = {
+    ...(stored.child || {}),
+    gender: stored.child?.gender === 'boy' ? 'boy' : 'girl',
+  };
   for (const [key, defaultValue] of Object.entries(starterState.gameStats)) {
     if (!Number.isFinite(gameStats[key])) gameStats[key] = defaultValue;
   }
   return {
     ...stored,
     version: starterState.version,
+    child,
     gamePasses: Number.isFinite(stored.gamePasses) ? stored.gamePasses : 0,
     gameStats,
     tasks: mergeDefaultTasks(stored.tasks, sourceVersion),
@@ -179,7 +184,7 @@ function loadState() {
   try {
     const stored = JSON.parse(localStorage.getItem(STORAGE_KEY));
     if (!stored) return clone(starterState);
-    if (stored.version === starterState.version || stored.version === 3) {
+    if ([starterState.version, 4, 3].includes(stored.version)) {
       const normalized = normalizeStoredState(stored);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
       return normalized;
@@ -265,21 +270,33 @@ function renderOnboarding() {
     ['🦄', 'Unicórnio'],
   ];
   return `
-    <div class="app-shell">
+    <div class="app-shell onboarding-shell">
       <section class="onboarding-screen" aria-labelledby="onboarding-title">
         <div class="onboarding-intro">
           ${brand()}
-          <p class="eyebrow">Primeiro acesso</p>
-          <h1 id="onboarding-title">Vamos criar o perfil da criança.</h1>
-          <p class="lead">O nome e as conquistas ficarão salvos neste tablet, inclusive quando estiver sem internet.</p>
+          <p class="eyebrow">Uma aventura para cada dia</p>
+          <h1 id="onboarding-title">Vamos criar o perfil do seu filho (a).</h1>
+          <p class="lead">O nome e as conquistas ficarão salvos neste dispositivo, inclusive quando estiver sem internet.</p>
+          <div class="adventure-preview" data-testid="onboarding-adventure">
+            <img src="./assets/aventura-mascotes.webp" alt="Raposa e leão seguindo um caminho de estrelas entre missões do dia" width="1200" height="800">
+            <div class="adventure-benefits" aria-label="O que espera seu filho">
+              <span><b aria-hidden="true">✓</b> Missões divertidas</span>
+              <span><b aria-hidden="true">★</b> Estrelas para juntar</span>
+              <span><b aria-hidden="true">♥</b> Prêmios em família</span>
+            </div>
+          </div>
           <div class="privacy-note">
             <strong>Cadastro familiar e privado</strong>
             <span>Sem anúncios, chat, compras ou envio de dados para terceiros.</span>
           </div>
         </div>
         <form id="onboarding-form" class="onboarding-card">
+          <div class="form-title">
+            <span aria-hidden="true">🚀</span>
+            <div><p>Passo 1 de 1</p><h2>Monte o perfil de aventura</h2></div>
+          </div>
           <div class="field">
-            <label for="child-name">Nome da criança</label>
+            <label for="child-name">Nome do seu filho (a)</label>
             <input id="child-name" name="childName" value="${esc(state.child.name)}" minlength="2" maxlength="30" autocomplete="given-name" required>
           </div>
           <div class="form-row">
@@ -288,21 +305,28 @@ function renderOnboarding() {
               <select id="child-age" name="childAge">${ageOptions}</select>
             </div>
             <div class="field">
-              <label for="child-avatar">Avatar</label>
-              <select id="child-avatar" name="childAvatar">${avatars.map(([emoji, label]) => `<option value="${emoji}" ${emoji === state.child.avatar ? 'selected' : ''}>${emoji} ${label}</option>`).join('')}</select>
+              <label for="child-gender">Menina ou menino?</label>
+              <select id="child-gender" name="childGender">
+                <option value="girl" ${state.child.gender !== 'boy' ? 'selected' : ''}>Menina</option>
+                <option value="boy" ${state.child.gender === 'boy' ? 'selected' : ''}>Menino</option>
+              </select>
             </div>
+          </div>
+          <div class="field">
+            <label for="child-avatar">Avatar</label>
+            <select id="child-avatar" name="childAvatar">${avatars.map(([emoji, label]) => `<option value="${emoji}" ${emoji === state.child.avatar ? 'selected' : ''}>${emoji} ${label}</option>`).join('')}</select>
           </div>
           <div class="field">
             <label for="create-pin">Crie um PIN do responsável</label>
             <input id="create-pin" name="pin" type="password" inputmode="numeric" pattern="[0-9]{4,6}" minlength="4" maxlength="6" autocomplete="new-password" required>
-            <span class="field-help">Use de 4 a 6 números que a criança não conheça.</span>
+            <span class="field-help">Use de 4 a 6 números que seu filho (a) não conheça.</span>
           </div>
           <div class="field">
             <label for="confirm-pin">Confirme o PIN</label>
             <input id="confirm-pin" name="confirmPin" type="password" inputmode="numeric" pattern="[0-9]{4,6}" minlength="4" maxlength="6" autocomplete="new-password" required>
           </div>
           <p id="onboarding-error" class="error-message" role="alert"></p>
-          <button class="primary-button onboarding-submit" type="submit">Começar</button>
+          <button class="primary-button onboarding-submit" type="submit">Começar aventura</button>
         </form>
       </section>
     </div>`;
@@ -323,7 +347,7 @@ function renderChooser() {
           <button class="mode-button child" data-action="enter-child">
             <span class="mode-emoji" aria-hidden="true">${state.child.avatar}</span>
             <span>
-              <span class="mode-label">Sou criança</span>
+              <span class="mode-label">Entrar como ${esc(state.child.name)}</span>
               <span class="mode-helper">Ver minhas tarefas e recompensas</span>
             </span>
             <span class="mode-arrow" aria-hidden="true">→</span>
@@ -412,7 +436,7 @@ function renderChild() {
           <div>
             <p class="eyebrow">Seu dia começa aqui</p>
             <h1>Olá, ${esc(state.child.name)}!</h1>
-            <p class="lead">${state.child.age} anos · Escolha uma missão e faça no seu ritmo.</p>
+            <p class="lead">${state.child.gender === 'boy' ? 'Menino' : 'Menina'} · ${state.child.age} anos · Escolha uma missão e faça no seu ritmo.</p>
           </div>
           <div class="avatar" aria-label="Avatar ${esc(state.child.name)}">${state.child.avatar}</div>
         </section>
@@ -701,20 +725,20 @@ function renderChildProgress() {
       <div class="empty-state" style="margin-top:14px">
         <p class="eyebrow">Gentileza também conta</p>
         <h2>Crescer não é competir.</h2>
-        <p class="muted">Seu progresso é comparado apenas com o seu próprio dia. Não há ranking entre crianças.</p>
+        <p class="muted">Seu progresso é comparado apenas com o seu próprio dia. Não há ranking com outras pessoas.</p>
       </div>
     </section>`;
 }
 
 function renderChildNav() {
   const items = [
-    ['today', 'Hoje'],
-    ['games', 'Jogos'],
-    ['rewards', 'Recompensas'],
-    ['progress', 'Progresso'],
+    ['today', 'Hoje', '☀️'],
+    ['games', 'Jogos', '🎮'],
+    ['rewards', 'Prêmios', '🎁'],
+    ['progress', 'Conquistas', '🏆'],
   ];
-  return `<nav class="bottom-nav" aria-label="Navegação da criança">${items.map(([id, label]) => `
-    <button class="nav-button ${childTab === id ? 'active' : ''}" data-action="child-tab" data-tab="${id}" ${childTab === id ? 'aria-current="page"' : ''}>${label}</button>`).join('')}</nav>`;
+  return `<nav class="bottom-nav" aria-label="Navegação do perfil do filho">${items.map(([id, label, icon]) => `
+    <button class="nav-button ${childTab === id ? 'active' : ''}" data-action="child-tab" data-tab="${id}" ${childTab === id ? 'aria-current="page"' : ''}><span aria-hidden="true">${icon}</span><strong>${label}</strong></button>`).join('')}</nav>`;
 }
 
 function renderParent() {
@@ -1244,6 +1268,7 @@ app.addEventListener('submit', (event) => {
     const form = new FormData(event.target);
     const childName = String(form.get('childName') || '').trim();
     const childAge = Number(form.get('childAge'));
+    const childGender = String(form.get('childGender') || 'girl');
     const childAvatar = String(form.get('childAvatar') || '🦊');
     const pin = String(form.get('pin') || '');
     const confirmPin = String(form.get('confirmPin') || '');
@@ -1257,6 +1282,10 @@ app.addEventListener('submit', (event) => {
       error.textContent = 'Escolha uma idade entre 5 e 10 anos.';
       return;
     }
+    if (!['girl', 'boy'].includes(childGender)) {
+      error.textContent = 'Escolha menina ou menino.';
+      return;
+    }
     if (!/^\d{4,6}$/.test(pin)) {
       error.textContent = 'O PIN deve ter de 4 a 6 números.';
       return;
@@ -1266,7 +1295,7 @@ app.addEventListener('submit', (event) => {
       return;
     }
 
-    state.child = { name: childName, age: childAge, avatar: childAvatar };
+    state.child = { name: childName, age: childAge, gender: childGender, avatar: childAvatar };
     state.parentPin = pin;
     state.profileComplete = true;
     addHistory(`Perfil de ${childName} criado neste aparelho.`);
@@ -1274,7 +1303,7 @@ app.addEventListener('submit', (event) => {
     currentView = 'child';
     childTab = 'today';
     render();
-    showToast(`Perfil de ${childName} salvo neste tablet.`);
+    showToast(`Perfil de ${childName} salvo neste dispositivo.`);
     return;
   }
   if (event.target.id === 'parent-login-form') {
