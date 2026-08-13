@@ -345,6 +345,9 @@ test('caça-estrelas avança de fase ao completar a sequência', async ({ page }
   await enterParentMode(page);
   await page.getByTestId('approval-arrumar-cama').getByRole('button', { name: /aprovar/i }).click();
   await page.getByRole('button', { name: /ver como clara/i }).click();
+  await page.clock.install();
+  const pausedAt = await page.evaluate(() => Date.now() + 10 * 60 * 1000);
+  await page.clock.pauseAt(pausedAt);
   await page.getByRole('button', { name: /^jogos$/i }).click();
   await page.getByRole('button', { name: /jogar caça-estrelas/i }).click();
 
